@@ -37,6 +37,13 @@ pre-commit install
 
 Chequeo de aislamiento (R2): el script `scripts/check_no_barriofarma_imports.sh` falla si aparecen imports directos a `barriofarma_app` bajo `pagosbf/**/*.py`.
 
+Smoke de tests Python (un `bench run-tests --module` por cada `pagosbf/tests/test_*.py`; requiere sitio con app instalada):
+
+```bash
+cd $PATH_TO_YOUR_BENCH
+./apps/pagosbf/scripts/run_smoke_tests.sh barriofarma.localhost
+```
+
 ## Licencia
 
 MIT (ver `LICENSE` y `license.txt`).

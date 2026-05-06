@@ -1,0 +1,294 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "format:BOL-{tipo_dte}-{folio}",
+ "creation": "2026-04-24 00:00:00",
+ "doctype": "DocType",
+ "editable_grid": 0,
+ "engine": "InnoDB",
+ "is_submittable": 1,
+  "field_order": [
+  "section_origen",
+  "sales_invoice",
+  "pos_invoice",
+  "section_certificacion_sii",
+  "sii_cod_ref",
+  "sii_razon_ref",
+  "tipo_dte",
+  "folio",
+  "col_origen_1",
+  "caf",
+  "fecha_emision",
+  "section_totales",
+  "monto_neto",
+  "monto_iva",
+  "col_totales_1",
+  "monto_exento",
+  "monto_total",
+  "section_xml",
+  "xml_dte",
+  "xml_dte_firmado",
+  "xml_sobre_firmado",
+  "section_sii",
+  "track_id",
+  "estado_envio",
+  "col_sii_1",
+  "fecha_envio",
+  "fecha_estado_final",
+  "section_errores",
+  "error_log",
+  "section_respuestas",
+  "respuestas"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_origen",
+   "fieldtype": "Section Break",
+   "label": "Origen"
+  },
+  {
+   "fieldname": "sales_invoice",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Sales Invoice",
+   "options": "Sales Invoice"
+  },
+  {
+   "fieldname": "pos_invoice",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "POS Invoice",
+   "options": "POS Invoice"
+  },
+  {
+   "fieldname": "section_certificacion_sii",
+   "fieldtype": "Section Break",
+   "label": "Certificacion SII (boleta)",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "sii_cod_ref",
+   "fieldtype": "Data",
+   "label": "SII CodRef (referencia)",
+   "description": "Opcional. Set de prueba BE: ej. SET (max 18). Va a Referencia/CodRef del XML.",
+   "length": 18
+  },
+  {
+   "fieldname": "sii_razon_ref",
+   "fieldtype": "Data",
+   "label": "SII RazonRef (referencia)",
+   "description": "Opcional. Set de prueba BE: ej. CASO-1 (max 90). Va a Referencia/RazonRef del XML.",
+   "length": 90
+  },
+  {
+   "fieldname": "tipo_dte",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Tipo DTE",
+   "options": "39\n41",
+   "reqd": 1,
+   "description": "39 afecta, 41 exenta"
+  },
+  {
+   "fieldname": "folio",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Folio",
+   "reqd": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "col_origen_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "caf",
+   "fieldtype": "Link",
+   "label": "CAF",
+   "options": "CAF",
+   "read_only": 1
+  },
+  {
+   "fieldname": "fecha_emision",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Fecha Emision",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_totales",
+   "fieldtype": "Section Break",
+   "label": "Totales"
+  },
+  {
+   "fieldname": "monto_neto",
+   "fieldtype": "Currency",
+   "label": "Monto Neto",
+   "options": "CLP",
+   "default": "0"
+  },
+  {
+   "fieldname": "monto_iva",
+   "fieldtype": "Currency",
+   "label": "IVA",
+   "options": "CLP",
+   "default": "0"
+  },
+  {
+   "fieldname": "col_totales_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "monto_exento",
+   "fieldtype": "Currency",
+   "label": "Monto Exento",
+   "options": "CLP",
+   "default": "0"
+  },
+  {
+   "fieldname": "monto_total",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Monto Total",
+   "options": "CLP",
+   "default": "0"
+  },
+  {
+   "fieldname": "section_xml",
+   "fieldtype": "Section Break",
+   "label": "XML",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "xml_dte",
+   "fieldtype": "Long Text",
+   "ignore_xss_filter": 1,
+   "label": "XML DTE (previo a firma)"
+  },
+  {
+   "fieldname": "xml_dte_firmado",
+   "fieldtype": "Long Text",
+   "ignore_xss_filter": 1,
+   "label": "XML DTE firmado"
+  },
+  {
+   "fieldname": "xml_sobre_firmado",
+   "fieldtype": "Long Text",
+   "ignore_xss_filter": 1,
+   "label": "XML Sobre EnvioBOLETA firmado"
+  },
+  {
+   "fieldname": "section_sii",
+   "fieldtype": "Section Break",
+   "label": "SII"
+  },
+  {
+   "fieldname": "track_id",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Track ID",
+   "read_only": 1
+  },
+  {
+   "fieldname": "estado_envio",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Estado Envio",
+   "options": "PENDIENTE\nVALIDANDO\nRECHAZADO_LOCAL\nENVIADO\nEPR\nRCH\nRFR\nRSC",
+   "default": "PENDIENTE",
+   "read_only": 1
+  },
+  {
+   "fieldname": "col_sii_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "fecha_envio",
+   "fieldtype": "Datetime",
+   "label": "Fecha Envio",
+   "read_only": 1
+  },
+  {
+   "fieldname": "fecha_estado_final",
+   "fieldtype": "Datetime",
+   "label": "Fecha Estado Final",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_errores",
+   "fieldtype": "Section Break",
+   "label": "Errores",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "error_log",
+   "fieldtype": "Long Text",
+   "label": "Error Log"
+  },
+  {
+   "fieldname": "section_respuestas",
+   "fieldtype": "Section Break",
+   "label": "Respuestas SII"
+  },
+  {
+   "fieldname": "respuestas",
+   "fieldtype": "Table",
+   "label": "Respuestas",
+   "options": "DTE Respuesta SII"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [
+  {
+   "link_doctype": "Sales Invoice",
+   "link_fieldname": "sales_invoice"
+  },
+  {
+   "link_doctype": "POS Invoice",
+   "link_fieldname": "pos_invoice"
+  }
+ ],
+ "modified": "2026-04-24 00:00:00",
+ "modified_by": "Administrator",
+ "module": "PagosBF",
+ "name": "DTE Boleta",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 0,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1,
+   "submit": 1,
+   "cancel": 1,
+   "amend": 0
+  },
+  {
+   "create": 0,
+   "delete": 0,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts Manager",
+   "share": 1,
+   "write": 0
+  }
+ ],
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

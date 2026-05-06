@@ -73,11 +73,11 @@ required_apps = ["frappe", "erpnext"]
 # Jinja
 # ----------
 
-# add methods and filters to jinja environment
-# jinja = {
-# 	"methods": "pagosbf.utils.jinja_methods",
-# 	"filters": "pagosbf.utils.jinja_filters"
-# }
+# Print formats POS Boleta SII (POS Invoice Boleta SII / POS Invoice SII Boleta) usan
+# ``pos_invoice_sii_print_block`` desde este modulo.
+jinja = {
+	"methods": "pagosbf.pagosbf.utils.jinja_methods",
+}
 
 # Installation
 # ------------
@@ -137,13 +137,14 @@ required_apps = ["frappe", "erpnext"]
 # ---------------
 # Hook on document methods and events
 
-# doc_events = {
-# 	"*": {
-# 		"on_update": "method",
-# 		"on_cancel": "method",
-# 		"on_trash": "method"
-# 	}
-# }
+doc_events = {
+	"Sales Invoice": {
+		"on_submit": "pagosbf.pagosbf.api.boleta.on_sales_invoice_submit",
+	},
+	"POS Invoice": {
+		"on_submit": "pagosbf.pagosbf.api.boleta.on_pos_invoice_submit",
+	},
+}
 
 # Scheduled Tasks
 # ---------------

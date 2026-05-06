@@ -1,0 +1,97 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:nombre",
+ "creation": "2026-04-24 00:00:00",
+ "doctype": "DocType",
+ "editable_grid": 0,
+ "engine": "InnoDB",
+ "field_order": [
+  "nombre",
+  "rut_firmante",
+  "col_break1",
+  "vigencia_desde",
+  "vigencia_hasta",
+  "section_break1",
+  "archivo_pfx",
+  "password"
+ ],
+ "fields": [
+  {
+   "fieldname": "nombre",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Nombre",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "rut_firmante",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "RUT Firmante",
+   "reqd": 1
+  },
+  {
+   "fieldname": "col_break1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "vigencia_desde",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Vigencia Desde",
+   "reqd": 1
+  },
+  {
+   "fieldname": "vigencia_hasta",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Vigencia Hasta",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break1",
+   "fieldtype": "Section Break",
+   "label": "Archivo"
+  },
+  {
+   "fieldname": "archivo_pfx",
+   "fieldtype": "Attach",
+   "label": "Archivo PFX",
+   "reqd": 1,
+   "description": "Certificado digital PKCS#12 (.pfx/.p12) de firma SII"
+  },
+  {
+   "fieldname": "password",
+   "fieldtype": "Password",
+   "label": "Password PFX",
+   "reqd": 1
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-04-24 00:00:00",
+ "modified_by": "Administrator",
+ "module": "PagosBF",
+ "name": "Certificado Digital",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 0,
+   "export": 0,
+   "print": 0,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 0,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

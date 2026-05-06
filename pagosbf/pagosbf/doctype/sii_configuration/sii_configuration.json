@@ -1,0 +1,181 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-04-24 00:00:00",
+ "doctype": "DocType",
+ "editable_grid": 0,
+ "engine": "InnoDB",
+ "field_order": [
+  "section_emisor",
+  "rut_emisor",
+  "razon_social",
+  "giro",
+  "col_emisor_1",
+  "direccion_origen",
+  "comuna_origen",
+  "section_resolucion",
+  "resolucion_numero",
+  "resolucion_fecha",
+  "section_certificado",
+  "certificado_digital",
+  "encolar_emision_en_submit",
+  "section_sii",
+  "ambiente",
+  "version_schema",
+  "col_sii_1",
+  "url_semilla",
+  "url_token",
+  "url_envio",
+  "url_consulta_estado"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_emisor",
+   "fieldtype": "Section Break",
+   "label": "Emisor"
+  },
+  {
+   "fieldname": "rut_emisor",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "RUT Emisor",
+   "reqd": 1
+  },
+  {
+   "fieldname": "razon_social",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Razon Social",
+   "reqd": 1
+  },
+  {
+   "fieldname": "giro",
+   "fieldtype": "Data",
+   "label": "Giro"
+  },
+  {
+   "fieldname": "col_emisor_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "direccion_origen",
+   "fieldtype": "Data",
+   "label": "Direccion Origen"
+  },
+  {
+   "fieldname": "comuna_origen",
+   "fieldtype": "Data",
+   "label": "Comuna Origen"
+  },
+  {
+   "fieldname": "section_resolucion",
+   "fieldtype": "Section Break",
+   "label": "Resolucion SII"
+  },
+  {
+   "fieldname": "resolucion_numero",
+   "fieldtype": "Int",
+   "label": "Numero Resolucion",
+   "default": "0",
+   "description": "Numero segun documento oficial SII o instructivo de certificacion (algunos usan 0). Debe cuadrar con lo esperado por el portal para evitar CRT-3-19."
+  },
+  {
+   "fieldname": "resolucion_fecha",
+   "fieldtype": "Date",
+   "label": "Fecha Resolucion",
+   "description": "Fecha de la misma resolucion (AAAA-MM-DD). Debe coincidir con el SII; omitirla o usar fecha incorrecta puede provocar CRT-3-19."
+  },
+  {
+   "fieldname": "section_certificado",
+   "fieldtype": "Section Break",
+   "label": "Certificado"
+  },
+  {
+   "fieldname": "certificado_digital",
+   "fieldtype": "Link",
+   "label": "Certificado Digital",
+   "options": "Certificado Digital"
+  },
+  {
+   "fieldname": "encolar_emision_en_submit",
+   "fieldtype": "Check",
+   "label": "Encolar emision SII al confirmar Sales Invoice",
+   "default": "0"
+  },
+  {
+   "fieldname": "section_sii",
+   "fieldtype": "Section Break",
+   "label": "Endpoints SII"
+  },
+  {
+   "fieldname": "ambiente",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Ambiente",
+   "options": "Certificacion\nProduccion",
+   "default": "Certificacion",
+   "reqd": 1
+  },
+  {
+   "fieldname": "version_schema",
+   "fieldtype": "Data",
+   "label": "Version Schema",
+   "default": "boleta",
+   "description": "Subcarpeta dentro de public/xsd/ (p.ej. 'boleta', 'boleta_v12')."
+  },
+  {
+   "fieldname": "col_sii_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "url_semilla",
+   "fieldtype": "Data",
+   "label": "URL Semilla",
+   "default": "https://maullin.sii.cl/DTEWS/CrSeed.jws"
+  },
+  {
+   "fieldname": "url_token",
+   "fieldtype": "Data",
+   "label": "URL Token",
+   "default": "https://maullin.sii.cl/DTEWS/GetTokenFromSeed.jws"
+  },
+  {
+   "fieldname": "url_envio",
+   "fieldtype": "Data",
+   "label": "URL Envio DTE",
+   "default": "https://maullin.sii.cl/cgi_dte/UPL/DTEUpload"
+  },
+  {
+   "fieldname": "url_consulta_estado",
+   "fieldtype": "Data",
+   "label": "URL Consulta Estado",
+   "default": "https://maullin.sii.cl/DTEWS/QueryEstUp.jws"
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-04-24 00:00:00",
+ "modified_by": "Administrator",
+ "module": "PagosBF",
+ "name": "SII Configuration",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 0,
+   "email": 0,
+   "export": 0,
+   "print": 0,
+   "read": 1,
+   "report": 0,
+   "role": "System Manager",
+   "share": 0,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

@@ -1,0 +1,263 @@
+{
+  "version": 1,
+  "descripcion": "Casos para validacion offline (build DTE + TED + XSD). El set formal de certificacion SII puede ampliar filas segun matriz oficial; escenarios EPR contra maullin quedan en verify/E2E.",
+  "cases": [
+    {
+      "id": "CERT-BOL-001",
+      "tipo_dte": 39,
+      "folio": 1,
+      "ind_servicio": 3,
+      "detalles": [
+        {
+          "nro_lin_det": 1,
+          "nombre_item": "Producto afecto base",
+          "cantidad": "1",
+          "precio_item": "1000",
+          "monto_item": "1000",
+          "indica_exento": false
+        }
+      ],
+      "totales": { "monto_neto": 840, "iva": 160, "monto_exento": 0, "monto_total": 1000 }
+    },
+    {
+      "id": "CERT-BOL-002",
+      "tipo_dte": 39,
+      "folio": 2,
+      "ind_servicio": 3,
+      "detalles": [
+        {
+          "nro_lin_det": 1,
+          "nombre_item": "Dos unidades",
+          "cantidad": "2",
+          "precio_item": "500",
+          "monto_item": "1000",
+          "indica_exento": false
+        }
+      ],
+      "totales": { "monto_neto": 840, "iva": 160, "monto_exento": 0, "monto_total": 1000 }
+    },
+    {
+      "id": "CERT-BOL-003",
+      "tipo_dte": 39,
+      "folio": 3,
+      "ind_servicio": 3,
+      "detalles": [
+        {
+          "nro_lin_det": 1,
+          "nombre_item": "Linea A",
+          "cantidad": "1",
+          "precio_item": "600",
+          "monto_item": "600",
+          "indica_exento": false
+        },
+        {
+          "nro_lin_det": 2,
+          "nombre_item": "Linea B",
+          "cantidad": "1",
+          "precio_item": "400",
+          "monto_item": "400",
+          "indica_exento": false
+        }
+      ],
+      "totales": { "monto_neto": 840, "iva": 160, "monto_exento": 0, "monto_total": 1000 }
+    },
+    {
+      "id": "CERT-BOL-004",
+      "tipo_dte": 39,
+      "folio": 4,
+      "ind_servicio": 3,
+      "detalles": [
+        {
+          "nro_lin_det": 1,
+          "nombre_item": "Tres items",
+          "cantidad": "1",
+          "precio_item": "119",
+          "monto_item": "119",
+          "indica_exento": false
+        },
+        {
+          "nro_lin_det": 2,
+          "nombre_item": "Item 2",
+          "cantidad": "2",
+          "precio_item": "300",
+          "monto_item": "600",
+          "indica_exento": false
+        },
+        {
+          "nro_lin_det": 3,
+          "nombre_item": "Item 3",
+          "cantidad": "1",
+          "precio_item": "281",
+          "monto_item": "281",
+          "indica_exento": false
+        }
+      ],
+      "totales": { "monto_neto": 840, "iva": 160, "monto_exento": 0, "monto_total": 1000 }
+    },
+    {
+      "id": "CERT-BOL-005",
+      "tipo_dte": 39,
+      "folio": 5,
+      "ind_servicio": 3,
+      "detalles": [
+        {
+          "nro_lin_det": 1,
+          "nombre_item": "Monto mayor",
+          "cantidad": "1",
+          "precio_item": "50000",
+          "monto_item": "50000",
+          "indica_exento": false
+        }
+      ],
+      "totales": { "monto_neto": 42017, "iva": 7983, "monto_exento": 0, "monto_total": 50000 }
+    },
+    {
+      "id": "CERT-BOL-006",
+      "tipo_dte": 41,
+      "folio": 1,
+      "ind_servicio": 3,
+      "detalles": [
+        {
+          "nro_lin_det": 1,
+          "nombre_item": "Exento simple",
+          "cantidad": "1",
+          "precio_item": "5000",
+          "monto_item": "5000",
+          "indica_exento": true
+        }
+      ],
+      "totales": { "monto_neto": 0, "iva": 0, "monto_exento": 5000, "monto_total": 5000 }
+    },
+    {
+      "id": "CERT-BOL-007",
+      "tipo_dte": 41,
+      "folio": 2,
+      "ind_servicio": 3,
+      "detalles": [
+        {
+          "nro_lin_det": 1,
+          "nombre_item": "Exento A",
+          "cantidad": "1",
+          "precio_item": "3000",
+          "monto_item": "3000",
+          "indica_exento": true
+        },
+        {
+          "nro_lin_det": 2,
+          "nombre_item": "Exento B",
+          "cantidad": "1",
+          "precio_item": "2000",
+          "monto_item": "2000",
+          "indica_exento": true
+        }
+      ],
+      "totales": { "monto_neto": 0, "iva": 0, "monto_exento": 5000, "monto_total": 5000 }
+    },
+    {
+      "id": "CERT-BOL-008",
+      "tipo_dte": 41,
+      "folio": 3,
+      "ind_servicio": 3,
+      "detalles": [
+        {
+          "nro_lin_det": 1,
+          "nombre_item": "Cantidad fraccion",
+          "cantidad": "3",
+          "precio_item": "1000",
+          "monto_item": "3000",
+          "indica_exento": true
+        }
+      ],
+      "totales": { "monto_neto": 0, "iva": 0, "monto_exento": 3000, "monto_total": 3000 }
+    },
+    {
+      "id": "CERT-BOL-009",
+      "tipo_dte": 39,
+      "folio": 9,
+      "ind_servicio": 3,
+      "detalles": [
+        {
+          "nro_lin_det": 1,
+          "nombre_item": "IVA sobre neto minimo",
+          "cantidad": "1",
+          "precio_item": "119",
+          "monto_item": "119",
+          "indica_exento": false
+        }
+      ],
+      "totales": { "monto_neto": 100, "iva": 19, "monto_exento": 0, "monto_total": 119 }
+    },
+    {
+      "id": "CERT-BOL-010",
+      "tipo_dte": 39,
+      "folio": 10,
+      "ind_servicio": 3,
+      "detalles": [
+        {
+          "nro_lin_det": 1,
+          "nombre_item": "Ticket moderado",
+          "cantidad": "1",
+          "precio_item": "9524",
+          "monto_item": "9524",
+          "indica_exento": false
+        }
+      ],
+      "totales": { "monto_neto": 8003, "iva": 1521, "monto_exento": 0, "monto_total": 9524 }
+    },
+    {
+      "id": "CERT-BOL-011",
+      "tipo_dte": 39,
+      "folio": 11,
+      "ind_servicio": 3,
+      "detalles": [
+        {
+          "nro_lin_det": 1,
+          "nombre_item": "Servicio retail",
+          "cantidad": "1",
+          "precio_item": "3333",
+          "monto_item": "3333",
+          "indica_exento": false
+        }
+      ],
+      "totales": { "monto_neto": 2801, "iva": 532, "monto_exento": 0, "monto_total": 3333 }
+    },
+    {
+      "id": "CERT-BOL-012",
+      "tipo_dte": 41,
+      "folio": 4,
+      "ind_servicio": 3,
+      "detalles": [
+        {
+          "nro_lin_det": 1,
+          "nombre_item": "Boleta exenta alta",
+          "cantidad": "1",
+          "precio_item": "999999",
+          "monto_item": "999999",
+          "indica_exento": true
+        }
+      ],
+      "totales": { "monto_neto": 0, "iva": 0, "monto_exento": 999999, "monto_total": 999999 }
+    },
+    {
+      "id": "CERT-BOL-BE-REF",
+      "tipo_dte": 39,
+      "folio": 50,
+      "ind_servicio": 3,
+      "referencias": [
+        { "nro_lin_ref": 1, "cod_ref": "SET", "razon_ref": "CASO-1" }
+      ],
+      "detalles": [
+        {
+          "nro_lin_det": 1,
+          "nombre_item": "Item con UnmdItem",
+          "cantidad": "1",
+          "precio_item": "1000",
+          "monto_item": "1000",
+          "indica_exento": false,
+          "unidad_medida": "Kg"
+        }
+      ],
+      "totales": { "monto_neto": 840, "iva": 160, "monto_exento": 0, "monto_total": 1000 }
+    }
+  ]
+}
