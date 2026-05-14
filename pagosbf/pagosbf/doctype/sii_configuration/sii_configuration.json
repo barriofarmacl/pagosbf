@@ -18,7 +18,9 @@
   "resolucion_fecha",
   "section_certificado",
   "certificado_digital",
+  "habilitar_factura_electronica",
   "encolar_emision_en_submit",
+  "emitir_sincrono_pos_invoice_submit",
   "section_sii",
   "ambiente",
   "version_schema",
@@ -97,10 +99,24 @@
    "options": "Certificado Digital"
   },
   {
+   "fieldname": "habilitar_factura_electronica",
+   "fieldtype": "Check",
+   "label": "Habilitar factura electronica 33",
+   "default": "0",
+   "description": "Feature flag para emision DTE 33 desde Sales Invoice. Mantener apagado salvo certificacion/rollout controlado."
+  },
+  {
    "fieldname": "encolar_emision_en_submit",
    "fieldtype": "Check",
    "label": "Encolar emision SII al confirmar Sales Invoice",
    "default": "0"
+  },
+  {
+   "fieldname": "emitir_sincrono_pos_invoice_submit",
+   "fieldtype": "Check",
+   "label": "Emitir boleta SII sincrona al confirmar POS Invoice",
+   "default": "0",
+   "description": "Si esta activo, al enviar la POS Invoice se llama al SII antes de cerrar la operacion (varios segundos). Si falla, la venta igual se guarda y se deja registro en Error Log. Tiene prioridad sobre Encolar para POS Invoice. Activelo para ticket con timbre inmediato cuando el SII responde bien."
   },
   {
    "fieldname": "section_sii",

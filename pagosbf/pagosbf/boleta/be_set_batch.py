@@ -13,7 +13,7 @@ from frappe.utils import getdate
 
 from pagosbf.pagosbf.dte.be_set_prueba import be_set_prueba_dte_data
 from pagosbf.pagosbf.boleta.caf_file import load_caf_data
-from pagosbf.pagosbf.boleta.cert_utils import get_signing_material_or_throw
+from pagosbf.pagosbf.boleta.cert_utils import get_signing_material_or_throw, resolve_digitador_rut
 from pagosbf.pagosbf.boleta import emision
 from pagosbf.pagosbf.dte import constants, xml_builder, xml_signer
 from pagosbf.pagosbf.dte.envio_builder import RUT_SII_CARATULA, CaratulaEmision, build_envio_boleta_draft_multi
@@ -118,8 +118,7 @@ def construir_sobre_set_prueba_be(
 	if firmar and dtes_firmados:
 		assert st is not None
 		emision.validate_resolucion_para_caratula_envio_boleta()
-		st_rut = (frappe.get_doc("Certificado Digital", cert_name).rut_firmante or em.rut).strip()
-		st_rut = st_rut.replace(" ", "").replace(".", "")
+		st_rut = resolve_digitador_rut(cert_name, st, em.rut)
 		tmst_env = emision._now_santiago()  # noqa: SLF001
 		carat = CaratulaEmision(
 			rut_emisor=em.rut,

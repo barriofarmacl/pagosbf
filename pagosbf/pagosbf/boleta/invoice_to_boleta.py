@@ -69,7 +69,11 @@ def _invoice_like_to_dte_data(
 	items_seq = getattr(doc, "items", None)
 	if items_seq is None and hasattr(doc, "get"):
 		items_seq = doc.get("items")
-	lines = _detalles_desde_items(list(items_seq or []), tipo_41=tipo == constants.TIPO_DTE_BOLETA_EXENTA)
+	lines = _detalles_desde_items(
+		list(items_seq or []),
+		tipo_41=tipo == constants.TIPO_DTE_BOLETA_EXENTA,
+		total_iva_documento=int(round(iva_f)) if tipo == constants.TIPO_DTE_BOLETA_AFECTA else None,
+	)
 	if not lines:
 		frappe.throw(f"{label} sin lineas, no se puede timbrar boleta SII.")
 	if tipo == constants.TIPO_DTE_BOLETA_EXENTA:
@@ -116,20 +120,27 @@ def _fecha_emision_doc(doc: Any, *, label: str) -> date:
 def _timestamp_firma_doc(doc: Any, *, label: str) -> datetime:
 	fe = _fecha_emision_doc(doc, label=label)
 	tv = doc.posting_time
-	if not tv:
+	if tv:
+		if isinstance(tv, str):
+			parts = tv.replace(".", ":").split(":")
+			h, m, s = int(parts[0]), 0, 0
+			if len(parts) > 1:
+				m = int(parts[1])
+			if len(parts) > 2:
+				s = int(float(parts[2]))
+			return datetime.combine(fe, time(h, m, s))
+		if isinstance(tv, datetime):
+			return tv
+		if isinstance(tv, time):
+			return datetime.combine(fe, tv)
 		return datetime.combine(fe, time(12, 0, 0))
-	if isinstance(tv, str):
-		parts = tv.replace(".", ":").split(":")
-		h, m, s = int(parts[0]), 0, 0
-		if len(parts) > 1:
-			m = int(parts[1])
-		if len(parts) > 2:
-			s = int(float(parts[2]))
-		return datetime.combine(fe, time(h, m, s))
-	if isinstance(tv, datetime):
-		return tv
-	if isinstance(tv, time):
-		return datetime.combine(fe, tv)
+	# Sin posting_time (POS comun): no usar 12:00 fijo; desincroniza TED/DTE vs
+	# TmstFirmaEnv del sobre (hora real) y Maullin puede rechazar el upload.
+	from zoneinfo import ZoneInfo
+
+	now = datetime.now(tz=ZoneInfo("America/Santiago")).replace(tzinfo=None)
+	if now.date() == fe:
+		return now.replace(microsecond=0)
 	return datetime.combine(fe, time(12, 0, 0))
 
 
@@ -148,15 +159,71 @@ def _receptor_desde_customer(customer: str | None, customer_name: str | None) ->
 	return Receptor(rut=rut, razon_social=rzn)
 
 
-def _detalles_desde_items(items: list[Any], *, tipo_41: bool) -> tuple[DetalleBoleta, ...]:
-	out: list[DetalleBoleta] = []
+def _allocate_iva_por_neto(nets: list[Decimal], total_iva: int) -> list[int]:
+	"""Reparte IVA en pesos enteros entre lineas (mayor resto), suma = total_iva."""
+	if total_iva <= 0 or not nets:
+		return [0] * len(nets)
+	den = sum(nets)
+	if den <= 0:
+		return [0] * len(nets)
+	tiva = Decimal(total_iva)
+	raw = [tiva * n / den for n in nets]
+	fl = [int(r) for r in raw]
+	rem = total_iva - sum(fl)
+	order = sorted(range(len(nets)), key=lambda i: raw[i] - fl[i], reverse=True)
+	for k in range(rem):
+		fl[order[k]] += 1
+	return fl
+
+
+def _detalles_desde_items(
+	items: list[Any],
+	*,
+	tipo_41: bool,
+	total_iva_documento: int | None = None,
+) -> tuple[DetalleBoleta, ...]:
+	"""MontoItem boleta afecta (39) debe sumar MntTotal; POS Item no trae item_tax_amount."""
+	rows: list[tuple[Any, Decimal, Decimal, Decimal]] = []
 	for it in items:
 		qty = Decimal(str(flt(it.qty) or 0))
 		if qty <= 0:
 			continue
 		net = Decimal(str(flt(it.net_amount or 0)))
 		tax = Decimal(str(flt(getattr(it, "item_tax_amount", None) or 0)))
-		mrow = (net + tax).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+		rows.append((it, qty, net, tax))
+
+	out: list[DetalleBoleta] = []
+	if tipo_41:
+		for it, qty, net, _tax in rows:
+			mrow = net.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+			monto_i = int(mrow) if mrow == mrow.to_integral() else int(mrow.to_integral())
+			prc = mrow / qty if qty else mrow
+			out.append(
+				DetalleBoleta(
+					nro_lin_det=len(out) + 1,
+					nombre_item=(it.item_name or it.item_code or "Item")[:100],
+					cantidad=qty,
+					precio_item=prc,
+					monto_item=Decimal(monto_i),
+					indica_exento=True,
+					unidad_medida=_unidad_medida_item(it),
+				)
+			)
+		return tuple(out)
+
+	iva_doc = int(total_iva_documento or 0)
+	explicit_sum = int(round(float(sum(r[3] for r in rows))))
+	pool = max(0, iva_doc - explicit_sum)
+	nets_sin_tax = [r[2] for r in rows if r[3] == 0]
+	alloc = _allocate_iva_por_neto(nets_sin_tax, pool) if nets_sin_tax else []
+	ai = 0
+	for it, qty, net, tax in rows:
+		if tax > 0:
+			mrow = (net + tax).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+		else:
+			iva_linea = Decimal(alloc[ai]) if ai < len(alloc) else Decimal(0)
+			ai += 1
+			mrow = (net + iva_linea).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 		monto_i = int(mrow) if mrow == mrow.to_integral() else int(mrow.to_integral())
 		prc = mrow / qty if qty else mrow
 		out.append(
@@ -166,7 +233,7 @@ def _detalles_desde_items(items: list[Any], *, tipo_41: bool) -> tuple[DetalleBo
 				cantidad=qty,
 				precio_item=prc,
 				monto_item=Decimal(monto_i),
-				indica_exento=tipo_41,
+				indica_exento=False,
 				unidad_medida=_unidad_medida_item(it),
 			)
 		)

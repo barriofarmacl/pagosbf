@@ -7,6 +7,8 @@ import re
 from .constants import (
 	CONSUMO_FOLIOS_SCHEMA_LOCATION,
 	ENVIO_BOLETA_SCHEMA_LOCATION,
+	ENVIO_DTE_SCHEMA_LOCATION,
+	LIBRO_CV_SCHEMA_LOCATION,
 	NS_XML_SCHEMA_INSTANCE,
 )
 
@@ -20,12 +22,30 @@ _ENVIO_OPEN_SCHEMA = (
 	+ b'">'
 )
 
+_ENVIO_DTE_OPEN_MIN = b'<EnvioDTE xmlns="http://www.sii.cl/SiiDte" version="1.0">'
+_ENVIO_DTE_OPEN_SCHEMA = (
+	b'<EnvioDTE xmlns="http://www.sii.cl/SiiDte" xmlns:xsi="'
+	+ NS_XML_SCHEMA_INSTANCE.encode("ascii")
+	+ b'" version="1.0" xsi:schemaLocation="'
+	+ ENVIO_DTE_SCHEMA_LOCATION.encode("ascii")
+	+ b'">'
+)
+
 _CONSUMO_OPEN_MIN = b'<ConsumoFolios xmlns="http://www.sii.cl/SiiDte" version="1.0">'
 _CONSUMO_OPEN_SCHEMA = (
 	b'<ConsumoFolios xmlns="http://www.sii.cl/SiiDte" xmlns:xsi="'
 	+ NS_XML_SCHEMA_INSTANCE.encode("ascii")
 	+ b'" version="1.0" xsi:schemaLocation="'
 	+ CONSUMO_FOLIOS_SCHEMA_LOCATION.encode("ascii")
+	+ b'">'
+)
+
+_LIBRO_CV_OPEN_MIN = b'<LibroCompraVenta xmlns="http://www.sii.cl/SiiDte" version="1.0">'
+_LIBRO_CV_OPEN_SCHEMA = (
+	b'<LibroCompraVenta xmlns="http://www.sii.cl/SiiDte" xmlns:xsi="'
+	+ NS_XML_SCHEMA_INSTANCE.encode("ascii")
+	+ b'" version="1.0" xsi:schemaLocation="'
+	+ LIBRO_CV_SCHEMA_LOCATION.encode("ascii")
 	+ b'">'
 )
 
@@ -75,6 +95,23 @@ def inject_envio_boleta_xsi_schema_declaration(data: bytes) -> bytes:
 	return data[:i] + replaced
 
 
+def inject_envio_dte_xsi_schema_declaration(data: bytes) -> bytes:
+	"""Declara ``xsi:schemaLocation`` en la raiz ``EnvioDTE`` **antes** de firmar el sobre."""
+	i = 0
+	if data.startswith(b"<?xml"):
+		p = data.find(b"?>")
+		if p == -1:
+			return data
+		i = p + 2
+	payload = data[i:].lstrip()
+	if not payload.startswith(_ENVIO_DTE_OPEN_MIN):
+		if payload.startswith(b"<EnvioDTE") and b"xsi:schemaLocation=" in payload[:400]:
+			return data
+		return data
+	replaced = _ENVIO_DTE_OPEN_SCHEMA + payload[len(_ENVIO_DTE_OPEN_MIN) :]
+	return data[:i] + replaced
+
+
 def inject_consumo_folios_xsi_schema_declaration(data: bytes) -> bytes:
 	"""Añade ``xmlns:xsi`` y ``xsi:schemaLocation`` en la raiz ``ConsumoFolios``.
 
@@ -94,4 +131,21 @@ def inject_consumo_folios_xsi_schema_declaration(data: bytes) -> bytes:
 			return data
 		return data
 	replaced = _CONSUMO_OPEN_SCHEMA + payload[len(_CONSUMO_OPEN_MIN) :]
+	return data[:i] + replaced
+
+
+def inject_libro_cv_xsi_schema_declaration(data: bytes) -> bytes:
+	"""Añade ``xmlns:xsi`` y ``xsi:schemaLocation`` en la raiz ``LibroCompraVenta``."""
+	i = 0
+	if data.startswith(b"<?xml"):
+		p = data.find(b"?>")
+		if p == -1:
+			return data
+		i = p + 2
+	payload = data[i:].lstrip()
+	if not payload.startswith(_LIBRO_CV_OPEN_MIN):
+		if payload.startswith(b"<LibroCompraVenta") and b"xsi:schemaLocation=" in payload[:450]:
+			return data
+		return data
+	replaced = _LIBRO_CV_OPEN_SCHEMA + payload[len(_LIBRO_CV_OPEN_MIN) :]
 	return data[:i] + replaced

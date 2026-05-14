@@ -92,9 +92,13 @@ class TestCafParser(unittest.TestCase):
 			parse_autorizacion_bytes(bad)
 		self.assertIn("RSASK", str(ctx.exception))
 
-	def test_td_no_boleta(self):
+	def test_parse_sintetico_td_33(self):
+		caf = parse_autorizacion_bytes(_synthetic_autorizacion(33))
+		self.assertEqual(caf.tipo_dte, 33)
+
+	def test_td_fuera_de_soporte_caf(self):
 		b = _synthetic_autorizacion(39)
-		s = b.decode("utf-8").replace("<TD>39</TD>", "<TD>33</TD>")
+		s = b.decode("utf-8").replace("<TD>39</TD>", "<TD>52</TD>")
 		with self.assertRaises(CAFParserError) as ctx:
 			parse_autorizacion_bytes(s.encode("utf-8"))
 		self.assertIn("no soportado", str(ctx.exception))

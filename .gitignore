@@ -7,3 +7,5 @@ __pycache__/
 node_modules/
 *.mo
 pagosbf/public/dist/
+# Stub local bajo el paquete; no versionar
+pagosbf/barriofarma_app/

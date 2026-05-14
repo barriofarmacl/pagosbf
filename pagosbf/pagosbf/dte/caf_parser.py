@@ -19,7 +19,7 @@ from pathlib import Path
 
 from lxml import etree
 
-from .constants import VALID_TIPOS_DTE
+from .constants import CAF_SUPPORTED_TIPOS_DTE
 from .types import CAFData
 
 
@@ -112,9 +112,9 @@ def parse_autorizacion_bytes(xml_bytes: bytes) -> CAFData:
 	except ValueError as exc:
 		raise CAFParserError(f"TD o rango no numerico: {exc}") from exc
 
-	if tipo_dte not in VALID_TIPOS_DTE:
+	if tipo_dte not in CAF_SUPPORTED_TIPOS_DTE:
 		raise CAFParserError(
-			f"TD={tipo_dte} no soportado (solo boletas {sorted(VALID_TIPOS_DTE)})."
+			f"TD={tipo_dte} no soportado para CAF/TED (soportados: {sorted(CAF_SUPPORTED_TIPOS_DTE)})."
 		)
 	if rango_desde < 0 or rango_hasta < rango_desde:
 		raise CAFParserError("Rango de folios invalido (D, H).")

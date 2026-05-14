@@ -64,3 +64,30 @@ class TestDteXmlSigner(unittest.TestCase):
 		mat = xml_signer.load_pfx(pfx_for_tests("x"), "x")
 		with self.assertRaises(xml_signer.XMLSignerError):
 			xml_signer.sign_dte(b"not xml", mat, reference_uri="BOL39-1")
+
+	def test_sign_get_token_envelope_sii_manual_layout(self):
+		"""SII AUTAUTOM cap. 8: Signature hijo de getToken, hermano de item (no dentro de item).
+
+		El XML usa elementos XMLDSig sin prefijo ``ds:`` y ``xmlns`` en ``Signature``, como el manual / xmlsec.
+		``signxml.XMLVerifier`` busca nodos ``ds:*`` y no valida este perfil; aceptacion real = SII ``getToken``.
+		"""
+		pwd = "test1234"
+		mat = xml_signer.load_pfx(pfx_for_tests(pwd), pwd)
+		out = xml_signer.sign_sii_get_token_envelope("000002360958", mat)
+		root = etree.fromstring(out.encode("utf-8"))
+		self.assertEqual(root.tag, "getToken")
+		children = list(root)
+		self.assertEqual(len(children), 2)
+		self.assertEqual(children[0].tag, "item")
+		self.assertEqual(
+			children[1].tag,
+			"{%s}Signature" % _DS,
+		)
+		sem = children[0].find("Semilla")
+		self.assertIsNotNone(sem)
+		self.assertEqual(sem.text, "000002360958")
+		self.assertIsNone(
+			children[0].find("{%s}Signature" % _DS),
+		)
+		self.assertIn('xmlns="http://www.w3.org/2000/09/xmldsig#"', out)
+		self.assertNotIn("ds:Signature", out)

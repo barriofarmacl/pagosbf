@@ -13,7 +13,7 @@ from frappe.utils import now_datetime
 from frappe.utils.data import getdate
 
 from pagosbf.pagosbf.boleta.caf_file import load_caf_data
-from pagosbf.pagosbf.boleta.cert_utils import get_signing_material_or_throw
+from pagosbf.pagosbf.boleta.cert_utils import get_signing_material_or_throw, resolve_digitador_rut
 from pagosbf.pagosbf.boleta.invoice_to_boleta import pos_invoice_to_dte_data, sales_invoice_to_dte_data
 from pagosbf.pagosbf.dte.caf_parser import CAFData
 from pagosbf.pagosbf.dte import constants
@@ -27,6 +27,7 @@ from pagosbf.pagosbf.dte.ted_generator import build_signed_ted
 from pagosbf.pagosbf.dte import xml_builder, xml_signer
 from pagosbf.pagosbf.dte.types import BoletaReferencia, DTEBoletaData, Emisor
 from pagosbf.pagosbf.sii.rut import rut_para_dte_xml
+from pagosbf.pagosbf.sii.sii_client import SIIClientError
 from pagosbf.pagosbf.sii.sii_frappe import append_dte_respuesta_sii, sii_client_from_sii_configuration
 from pagosbf.pagosbf.sii.sii_response_xml import parse_respuesta_sii
 
@@ -237,31 +238,38 @@ def _ejecutar_emision_core(
 	bol.save(ignore_permissions=True, ignore_version=True)
 	try:
 		st = get_signing_material_or_throw(cert)
-		st_rut = (frappe.get_doc("Certificado Digital", cert).rut_firmante or em.rut).strip()
-		st_rut = st_rut.replace(" ", "").replace(".", "")
+		st_rut = resolve_digitador_rut(cert, st, em.rut)
 		validate_resolucion_para_caratula_envio_boleta()
+
+		# Una sola marca de tiempo para TED, TmstFirma del DTE y TmstFirmaEnv del sobre.
+		# Si se usa la del mapper (p. ej. 12:00 cuando POS sin posting_time) y el sobre
+		# lleva hora real, Maullin puede rechazar el upload sin detalle en el HTML.
+		tm_emit = _now_santiago()
+		data = replace(data, timestamp_firma=tm_emit)
 
 		draft = xml_builder.build_dte(data)
 		ted = build_signed_ted(draft.dd_data, caf_d, data.timestamp_firma)
 		dte_pre = xml_builder.insert_ted(draft, ted, data.timestamp_firma)
 		xml_builder.validate_dte_xml(dte_pre, version=ver)
+		dte_pre_para_firma = xml_signer.inject_dte_xsi_namespace(dte_pre)
 		dte_f = xml_signer.sign_dte(
-			dte_pre, st, reference_uri=draft.documento_id
+			dte_pre_para_firma, st, reference_uri=draft.documento_id
 		)
-		tmst_env = _now_santiago()
 		carat = CaratulaEmision(
 			rut_emisor=em.rut,
 			rut_envia=st_rut,
 			rut_receptor=RUT_SII_CARATULA,
 			fch_resol=em.resolucion_fecha,
 			nro_resol=int(em.resolucion_numero or 0),
-			tmst_firma_env=tmst_env,
+			tmst_firma_env=tm_emit,
 			tipo_dte=int(data.tipo_dte),
 			set_dte_id="SetDte1",
 		)
 		borr = build_envio_boleta_draft(dte_f, carat)
 		sobre = xml_signer.sign_envio_boleta(
-			borr, st, reference_uri=carat.set_dte_id
+			borr,
+			st,
+			reference_uri=carat.set_dte_id,
 		)
 
 		client = sii_client_from_sii_configuration()
@@ -275,7 +283,7 @@ def _ejecutar_emision_core(
 		bol.set("xml_sobre_firmado", _bytes_xml_log(sobre))
 		bol.save(ignore_permissions=True, ignore_version=True)
 
-		upload = client.enviar_sobre(sobre, token=tok, rut_emisor=em.rut)
+		upload = client.enviar_sobre(sobre, token=tok, rut_emisor=em.rut, rut_digitador=st_rut)
 		_log.append(
 			"envio",
 			request_xml=_bytes_xml_log(sobre)[:20000],
@@ -289,6 +297,8 @@ def _ejecutar_emision_core(
 		bol.set("fecha_envio", now_datetime())
 		bol.save(ignore_permissions=True, ignore_version=True)
 	except Exception as exc:  # noqa: BLE001
+		if isinstance(exc, SIIClientError):
+			_append_respuestas_sii_client_error(_log, exc)
 		err = f"{type(exc).__name__}: {exc!s}"[:20000]
 		b2 = frappe.get_doc("DTE Boleta", bol.name)
 		b2.set("estado_envio", "RECHAZADO_LOCAL")
@@ -296,6 +306,42 @@ def _ejecutar_emision_core(
 		b2.save(ignore_permissions=True, ignore_version=True)
 		raise
 	return bol.name
+
+
+def _append_respuestas_sii_client_error(log: _Logger, exc: SIIClientError) -> None:
+	"""Persiste XML crudo SII en `respuestas` cuando falla semilla/token (p. ej. ESTADO 10)."""
+	if exc.phase == "getSeed" and exc.raw_xml:
+		log.append(
+			"semilla",
+			request_xml=None,
+			response_xml=exc.raw_xml,
+			estado=exc.sii_estado,
+			glosa=exc.sii_glosa,
+		)
+	elif exc.phase == "getToken":
+		if exc.raw_previous:
+			log.append(
+				"semilla",
+				request_xml=None,
+				response_xml=exc.raw_previous,
+				estado="00",
+				glosa=None,
+			)
+		if exc.raw_xml:
+			glosa_tok = exc.sii_glosa or ""
+			if exc.semilla_obtenida:
+				glosa_tok = (
+					f"{glosa_tok} | semilla_obtenida={exc.semilla_obtenida}"
+					if glosa_tok
+					else f"semilla_obtenida={exc.semilla_obtenida}"
+				)
+			log.append(
+				"token",
+				request_xml=None,
+				response_xml=exc.raw_xml,
+				estado=exc.sii_estado,
+				glosa=glosa_tok or None,
+			)
 
 
 class _Logger:

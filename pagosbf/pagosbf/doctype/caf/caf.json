@@ -18,12 +18,12 @@
  ],
  "fields": [
   {
-   "description": "39 = Boleta afecta; 41 = Boleta exenta",
+   "description": "39 = Boleta afecta; 41 = Boleta exenta; 33 = Factura; 61 = Nota de Credito; 56 = Nota de Debito",
    "fieldname": "tipo_dte",
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Tipo DTE",
-   "options": "39\n41",
+   "options": "39\n41\n33\n61\n56",
    "reqd": 1
   },
   {

@@ -8,7 +8,7 @@ from __future__ import annotations
 import frappe
 
 from pagosbf.pagosbf.boleta.caf_file import load_caf_data
-from pagosbf.pagosbf.boleta.cert_utils import get_signing_material_or_throw
+from pagosbf.pagosbf.boleta.cert_utils import get_signing_material_or_throw, resolve_digitador_rut
 from pagosbf.pagosbf.boleta.invoice_to_boleta import pos_invoice_to_dte_data, sales_invoice_to_dte_data
 from pagosbf.pagosbf.dte.envio_builder import RUT_SII_CARATULA, CaratulaEmision, build_envio_boleta_draft
 from pagosbf.pagosbf.dte.ted_generator import build_signed_ted
@@ -96,8 +96,7 @@ def preview_boleta_xml(
 		return out
 
 	st = get_signing_material_or_throw(cert)
-	st_rut = (frappe.get_doc("Certificado Digital", cert).rut_firmante or em.rut).strip()
-	st_rut = st_rut.replace(" ", "").replace(".", "")
+	st_rut = resolve_digitador_rut(cert, st, em.rut)
 	emision.validate_resolucion_para_caratula_envio_boleta()
 	dte_f = xml_signer.sign_dte(dte_pre, st, reference_uri=draft.documento_id)
 	tmst_env = emision._now_santiago()  # noqa: SLF001

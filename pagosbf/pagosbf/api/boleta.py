@@ -9,6 +9,7 @@ import base64
 from types import SimpleNamespace
 
 import frappe
+from frappe import _
 from erpnext.accounts.doctype.pos_invoice.pos_invoice import POSInvoice
 from erpnext.accounts.doctype.sales_invoice.sales_invoice import SalesInvoice
 
@@ -269,11 +270,10 @@ def on_sales_invoice_submit(doc, _method: str | None = None) -> None:
 
 @frappe.whitelist()
 def on_pos_invoice_submit(doc, _method: str | None = None) -> None:
-	"""Registrado en hooks; encola emision SII para POS Invoice (misma politica que Sales Invoice)."""
+	"""Registrado en hooks; emision SII para POS Invoice (sincrona opcional o encolada)."""
 	if doc.doctype != "POS Invoice":
 		return
-	encolar = int(frappe.db.get_single_value("SII Configuration", "encolar_emision_en_submit") or 0) == 1
-	if not encolar or doc.flags.get("skip_pagosbf_boleta_sii"):
+	if doc.flags.get("skip_pagosbf_boleta_sii"):
 		return
 	if doc.docstatus != 1 or getattr(doc, "is_return", 0):
 		return
@@ -287,7 +287,25 @@ def on_pos_invoice_submit(doc, _method: str | None = None) -> None:
 	)
 	if row and row.get("estado_envio") == "ENVIADO":
 		return
-	emision.encolar_emision_sii(pos_invoice_name=doc.name)
+	sync = int(
+		frappe.db.get_single_value("SII Configuration", "emitir_sincrono_pos_invoice_submit") or 0
+	) == 1
+	if sync:
+		try:
+			emision.ejecutar_emision_sii(pos_invoice_name=doc.name)
+		except Exception:
+			frappe.log_error(frappe.get_traceback(), "pagosbf POS Invoice emitir sincrono")
+			frappe.msgprint(
+				_(
+					"La emision SII sincrona fallo; la venta quedo guardada. Revise Error Log y ejecute emitir para esta POS Invoice."
+				),
+				alert=True,
+				indicator="orange",
+			)
+		return
+	encolar = int(frappe.db.get_single_value("SII Configuration", "encolar_emision_en_submit") or 0) == 1
+	if encolar:
+		emision.encolar_emision_sii(pos_invoice_name=doc.name)
 
 
 def _require_source_permission(doctype: str, name: str) -> None:

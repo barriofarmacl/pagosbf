@@ -6,7 +6,9 @@
 pone la firma como hijo del ``DTE`` (no dentro del ``Documento``), y el digest usa la cadena de
 Transforms del perfil SII sobre ese fragmento.
 
-Sobre ``EnvioBOLETA`` / semilla ``getToken``: mismo algoritmo enveloped segun caso.
+Sobre ``EnvioBOLETA`` / semilla ``getToken``: enveloped RSA-SHA1; el sobre DTE/DTEUpload sigue con
+prefijo ``ds:``. El XML de ``getToken`` para AUTAUTOM usa **sin** prefijo ``ds:`` y ``xmlns`` en
+``Signature`` (alineado a manuales / xmlsec del SII).
 
 Perfil ``xmldsignature_v10.xsd`` (portal) para Reference del DTE:
 - ``CanonicalizationMethod`` = ``REC-xml-c14n-20010315``.
@@ -33,6 +35,7 @@ from signxml import (
 	XMLSigner,
 	XMLVerifier,
 )
+from signxml.util import namespaces as signxml_namespaces
 from signxml.verifier import SignatureConfiguration
 
 from .constants import NS_SII_DTE, SII_XML_ENCODING
@@ -40,11 +43,32 @@ from .sii_xml_bytes import (
 	finalize_sii_xml_bytes,
 	inject_consumo_folios_xsi_schema_declaration,
 	inject_envio_boleta_xsi_schema_declaration,
+	inject_envio_dte_xsi_schema_declaration,
+	inject_libro_cv_xsi_schema_declaration,
 )
 
 
 class XMLSignerError(Exception):
 	"""Error en carga PKCS#12, firma o verificacion XMLDSig."""
+
+
+def inject_dte_xsi_namespace(data: bytes) -> bytes:
+	"""Declara ``xmlns:xsi`` en la raiz ``<DTE>`` antes de firmar.
+
+	El sobre ``EnvioBOLETA`` necesita ``xsi:schemaLocation`` para no caer en
+	``SCH-00001``. Con canonicalizacion inclusiva, ese ``xmlns:xsi`` ancestro
+	cambia el digest del ``Documento`` si el DTE se firmo sin ese namespace en
+	contexto. Declararlo en el DTE antes de firmar mantiene estable la firma al
+	embeberlo dentro del sobre con ``schemaLocation``.
+	"""
+	target = b'<DTE xmlns="http://www.sii.cl/SiiDte" version="1.0">'
+	replacement = (
+		b'<DTE xmlns="http://www.sii.cl/SiiDte" '
+		b'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.0">'
+	)
+	if b"xmlns:xsi=" in data[:500]:
+		return data
+	return data.replace(target, replacement, 1)
 
 
 def _isolate_documento_subtree_for_digest(dte_root: etree._Element, documento_id: str) -> None:
@@ -131,6 +155,18 @@ def _signer_envio_y_semilla() -> XMLSigner:
 		digest_algorithm=DigestAlgorithm.SHA1,
 		c14n_algorithm=CanonicalizationMethod.CANONICAL_XML_1_0,
 	)
+
+
+def _signer_sii_get_token() -> XMLSigner:
+	"""Igual que envio/semilla pero XMLDSig sin prefijo ``ds:`` (manual AUTAUTOM / xmlsec SII)."""
+	s = _SiiXMLSigner(
+		method=SignatureConstructionMethod.enveloped,
+		signature_algorithm=SignatureMethod.RSA_SHA1,
+		digest_algorithm=DigestAlgorithm.SHA1,
+		c14n_algorithm=CanonicalizationMethod.CANONICAL_XML_1_0,
+	)
+	s.namespaces = {None: signxml_namespaces.ds}
+	return s
 
 
 def _sign_kw_envio() -> dict:
@@ -254,6 +290,47 @@ def sign_envio_boleta(
 	return out
 
 
+def sign_envio_dte(
+	envio_xml_bytes: bytes,
+	material: SigningMaterial,
+	reference_uri: str = "",
+	*,
+	inject_portal_schema_location: bool = True,
+) -> bytes:
+	"""Firma el sobre ``<EnvioDTE>`` enveloped bajo ``<SetDTE ID=...>``.
+
+	Mismo perfil XMLDSig que boleta; ``Caratula/RutEnvia`` debe coincidir con el
+	firmante del certificado (PFX).
+	"""
+	data = envio_xml_bytes
+	if inject_portal_schema_location:
+		data = inject_envio_dte_xsi_schema_declaration(data)
+	try:
+		root = etree.fromstring(data)
+	except etree.XMLSyntaxError as exc:
+		raise XMLSignerError(f"EnvioDTE XML mal formado: {exc}") from exc
+
+	try:
+		signed = _signer_envio_y_semilla().sign(
+			root,
+			key=material.private_key,
+			cert=material.cert_pem,
+			reference_uri=reference_uri,
+			**_sign_kw_envio(),
+		)
+	except Exception as exc:  # noqa: BLE001
+		raise XMLSignerError(f"Firma XMLDSig del sobre EnvioDTE fallo: {exc}") from exc
+
+	out = etree.tostring(
+		signed,
+		encoding=SII_XML_ENCODING,
+		xml_declaration=True,
+		standalone=None,
+	)
+	out = finalize_sii_xml_bytes(out)
+	return out
+
+
 def sign_consumo_folios(
 	consumo_xml_bytes: bytes,
 	material: SigningMaterial,
@@ -301,6 +378,43 @@ def sign_consumo_folios(
 	return out
 
 
+def sign_libro_compra_venta(
+	libro_xml_bytes: bytes,
+	material: SigningMaterial,
+	reference_uri: str = "LIBROVENTA",
+	*,
+	inject_portal_schema_location: bool = True,
+) -> bytes:
+	"""Firma ``LibroCompraVenta`` enveloped con referencia al nodo ``EnvioLibro``."""
+	data = libro_xml_bytes
+	if inject_portal_schema_location:
+		data = inject_libro_cv_xsi_schema_declaration(data)
+	try:
+		root = etree.fromstring(data)
+	except etree.XMLSyntaxError as exc:
+		raise XMLSignerError(f"LibroCompraVenta XML mal formado: {exc}") from exc
+
+	try:
+		signed = _signer_envio_y_semilla().sign(
+			root,
+			key=material.private_key,
+			cert=material.cert_pem,
+			reference_uri=reference_uri,
+			**_sign_kw_envio(),
+		)
+	except Exception as exc:  # noqa: BLE001
+		raise XMLSignerError(f"Firma XMLDSig LibroCompraVenta fallo: {exc}") from exc
+
+	out = etree.tostring(
+		signed,
+		encoding=SII_XML_ENCODING,
+		xml_declaration=True,
+		standalone=None,
+	)
+	out = finalize_sii_xml_bytes(out)
+	return out
+
+
 def verify_signature(signed_xml_bytes: bytes, material: SigningMaterial | None = None) -> bool:
 	"""Verifica firma XMLDSig contra el certificado del `SigningMaterial`.
 
@@ -324,42 +438,47 @@ def verify_signature(signed_xml_bytes: bytes, material: SigningMaterial | None =
 
 
 def sign_sii_get_token_envelope(semilla: str, material: SigningMaterial) -> str:
-	"""Arma el XML `getToken` con `item` firmado (semilla) para `GetTokenFromSeed`.
+	"""Arma el XML `getToken` con firma XMLDSig para `GetTokenFromSeed`.
 
-	Formato alineado a manuales SII: ``<getToken><item ID=...><Semilla/></item></getToken>``
-	con firma XMLDSig enveloped RSA-SHA1 bajo el certificado del representante
-	(mismo del envio de DTE). El string se envia en `pszXml` a SOAP.
+	Perfil del manual SII / AUTAUTOM (cap. 8): raíz ``getToken``, hijo ``item`` con
+	``Semilla``, y ``Signature`` como **hermano** de ``item`` (mismo nivel bajo
+	``getToken``), no dentro de ``item``. ``signxml`` con ``reference_uri=None``
+	sobre ``getToken`` reproduce ese layout (Reference sin URI con enveloped).
+
+	El string se envía en ``pszXml`` a SOAP (UTF-8).
 	"""
-	item_id = "itemSemilla"
-	item = etree.Element("item")
-	item.set("ID", item_id)
+	root = etree.Element("getToken")
+	item = etree.SubElement(root, "item")
 	sem_el = etree.SubElement(item, "Semilla")
 	sem_el.text = semilla
 	try:
-		signed_item = _signer_envio_y_semilla().sign(
-			item,
+		signed_root = _signer_sii_get_token().sign(
+			root,
 			key=material.private_key,
 			cert=material.cert_pem,
-			reference_uri=item_id,
+			reference_uri=None,
 			**_sign_kw_envio(),
 		)
 	except Exception as exc:  # noqa: BLE001
 		raise XMLSignerError(f"Firma de semilla (getToken) fallo: {exc}") from exc
-	root = etree.Element("getToken")
-	root.append(signed_item)
-	# SII/zeep: UTF-8; la semilla es numerica, sin conficto con Latin-1.
 	return etree.tostring(
-		root, encoding="utf-8", xml_declaration=True, pretty_print=False
+		signed_root,
+		encoding="utf-8",
+		xml_declaration=True,
+		pretty_print=False,
 	).decode("utf-8")
 
 
 __all__ = [
 	"SigningMaterial",
 	"XMLSignerError",
+	"inject_dte_xsi_namespace",
 	"load_pfx",
 	"sign_dte",
 	"sign_envio_boleta",
+	"sign_envio_dte",
 	"sign_consumo_folios",
+	"sign_libro_compra_venta",
 	"sign_sii_get_token_envelope",
 	"verify_signature",
 ]

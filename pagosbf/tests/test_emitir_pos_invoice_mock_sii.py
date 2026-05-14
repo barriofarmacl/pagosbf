@@ -35,8 +35,15 @@ class _FakeSIIClientOk:
 <sii:RESP_BODY><sii:TOKEN>T1</sii:TOKEN></sii:RESP_BODY></sii:RESPUESTA>"""
 		return "S1", "T1", raw0, raw1
 
-	def enviar_sobre(self, envio_bytes: bytes, token: str, rut_emisor: str) -> DteUploadResult:
-		_ = envio_bytes, token, rut_emisor
+	def enviar_sobre(
+		self,
+		envio_bytes: bytes,
+		token: str,
+		rut_emisor: str,
+		*,
+		rut_digitador: str | None = None,
+	) -> DteUploadResult:
+		_ = envio_bytes, token, rut_emisor, rut_digitador
 		return DteUploadResult(
 			track_id="88112233",
 			resumen="TRACK: 88112233",

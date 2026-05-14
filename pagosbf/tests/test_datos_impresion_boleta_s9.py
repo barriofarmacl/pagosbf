@@ -36,8 +36,15 @@ class _FakeSIIClientOk:
 <sii:RESP_BODY><sii:TOKEN>T1</sii:TOKEN></sii:RESP_BODY></sii:RESPUESTA>"""
 		return "S1", "T1", raw0, raw1
 
-	def enviar_sobre(self, envio_bytes: bytes, token: str, rut_emisor: str) -> DteUploadResult:
-		_ = envio_bytes, token, rut_emisor
+	def enviar_sobre(
+		self,
+		envio_bytes: bytes,
+		token: str,
+		rut_emisor: str,
+		*,
+		rut_digitador: str | None = None,
+	) -> DteUploadResult:
+		_ = envio_bytes, token, rut_emisor, rut_digitador
 		return DteUploadResult(
 			track_id="88112233",
 			resumen="TRACK: 88112233",
@@ -102,6 +109,22 @@ class TestDatosImpresionBoletaS9(FrappeTestCase):
 			self.assertIn("mensaje", out)
 		finally:
 			frappe.db.rollback(save_point=sp)
+
+
+class TestPosInvoiceSiiPrintBlock(FrappeTestCase):
+	def test_print_block_sin_dte_no_retorna_none(self) -> None:
+		pi_name = "PI-JINJA-" + frappe.generate_hash(length=8)
+		with patch("pagosbf.pagosbf.api.boleta._require_source_permission", lambda *a, **k: None):
+			with patch(
+				"pagosbf.pagosbf.api.boleta.datos_impresion_boleta_pos",
+				return_value={"ok": False, "mensaje": "Sin DTE Boleta vinculada.", "pos_invoice": pi_name},
+			):
+				from pagosbf.pagosbf.utils.jinja_methods import pos_invoice_sii_print_block
+
+				out = pos_invoice_sii_print_block(SimpleNamespace(name=pi_name))
+		self.assertFalse(out.get("sii_ready"))
+		self.assertTrue(out.get("sii_sin_dte"))
+		self.assertIn("Sin DTE", out.get("mensaje_print") or "")
 
 
 if __name__ == "__main__":

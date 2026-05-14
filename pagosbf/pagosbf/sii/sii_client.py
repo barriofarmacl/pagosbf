@@ -15,8 +15,46 @@ from .rut import split_rut
 from .sii_response_xml import SiiRespuesta, parse_respuesta_sii
 
 
+def _trunc_xml(s: str, max_len: int = 3600) -> str:
+	t = (s or "").replace("\n", " ").strip()
+	if len(t) > max_len:
+		return f"{t[:max_len]}...(truncated {len(t) - max_len} chars)"
+	return t
+
+
 class SIIClientError(Exception):
 	"""Error de negocio o protocolo (ESTADO SII != 00)."""
+
+	def __init__(
+		self,
+		message: str,
+		*,
+		phase: str,
+		raw_xml: str | None = None,
+		raw_previous: str | None = None,
+		endpoint: str | None = None,
+		sii_estado: str | None = None,
+		sii_glosa: str | None = None,
+		semilla_obtenida: str | None = None,
+	) -> None:
+		super().__init__(message)
+		self.phase = phase
+		self.raw_xml = raw_xml
+		self.raw_previous = raw_previous
+		self.endpoint = endpoint
+		self.sii_estado = sii_estado
+		self.sii_glosa = sii_glosa
+		self.semilla_obtenida = semilla_obtenida
+
+	def __str__(self) -> str:
+		parts: list[str] = [super().__str__()]
+		if self.endpoint:
+			parts.append(f"endpoint={self.endpoint!r}")
+		if self.semilla_obtenida:
+			parts.append(f"semilla_obtenida={self.semilla_obtenida!r}")
+		if self.raw_xml:
+			parts.append(f"raw_xml={_trunc_xml(self.raw_xml)!r}")
+		return " | ".join(parts)
 
 
 @dataclass(frozen=True, slots=True)
@@ -77,10 +115,16 @@ class SIIClient:
 
 	def require_semilla(self) -> str:
 		"""Obtiene la semilla o levanta `SIIClientError` si SII responde error."""
-		p = self.get_seed_respuesta()
+		raw = self.get_raw_seed()
+		p = parse_respuesta_sii(raw)
 		if p.estado != "00" or not p.semilla:
 			raise SIIClientError(
-				f"getSeed: ESTADO={p.estado!r} GLOSA={p.glosa!r} (sin semilla)"
+				f"getSeed: ESTADO={p.estado!r} GLOSA={p.glosa!r} (sin semilla)",
+				phase="getSeed",
+				raw_xml=raw,
+				endpoint=self._cfg.url_semilla,
+				sii_estado=p.estado,
+				sii_glosa=p.glosa,
 			)
 		return p.semilla
 
@@ -95,7 +139,13 @@ class SIIClient:
 		p = parse_respuesta_sii(raw)
 		if p.estado != "00" or not p.token:
 			raise SIIClientError(
-				f"getToken: ESTADO={p.estado!r} GLOSA={p.glosa!r} (sin token)"
+				f"getToken: ESTADO={p.estado!r} GLOSA={p.glosa!r} (sin token)",
+				phase="getToken",
+				raw_xml=raw,
+				endpoint=self._cfg.url_token,
+				sii_estado=p.estado,
+				sii_glosa=p.glosa,
+				semilla_obtenida=semilla,
 			)
 		return p.token
 
@@ -107,7 +157,12 @@ class SIIClient:
 		p0 = parse_respuesta_sii(raw0)
 		if p0.estado != "00" or not p0.semilla:
 			raise SIIClientError(
-				f"getSeed: ESTADO={p0.estado!r} GLOSA={p0.glosa!r} (sin semilla)"
+				f"getSeed: ESTADO={p0.estado!r} GLOSA={p0.glosa!r} (sin semilla)",
+				phase="getSeed",
+				raw_xml=raw0,
+				endpoint=self._cfg.url_semilla,
+				sii_estado=p0.estado,
+				sii_glosa=p0.glosa,
 			)
 		sem = p0.semilla
 		psz = sign_sii_get_token_envelope(sem, material)
@@ -119,7 +174,14 @@ class SIIClient:
 		p1 = parse_respuesta_sii(raw1)
 		if p1.estado != "00" or not p1.token:
 			raise SIIClientError(
-				f"getToken: ESTADO={p1.estado!r} GLOSA={p1.glosa!r} (sin token)"
+				f"getToken: ESTADO={p1.estado!r} GLOSA={p1.glosa!r} (sin token)",
+				phase="getToken",
+				raw_xml=raw1,
+				raw_previous=raw0,
+				endpoint=self._cfg.url_token,
+				sii_estado=p1.estado,
+				sii_glosa=p1.glosa,
+				semilla_obtenida=sem,
 			)
 		return sem, p1.token, raw0, raw1
 
@@ -128,6 +190,8 @@ class SIIClient:
 		envio_bytes: bytes,
 		token: str,
 		rut_emisor: str,
+		*,
+		rut_digitador: str | None = None,
 	) -> DteUploadResult:
 		"""POST multipart a `url_envio`."""
 		return upload_envio_dte(
@@ -135,6 +199,7 @@ class SIIClient:
 			envio_bytes,
 			rut_emisor=rut_emisor,
 			token=token,
+			rut_digitador=rut_digitador,
 			timeout=self._cfg.timeout_s,
 		)
 
