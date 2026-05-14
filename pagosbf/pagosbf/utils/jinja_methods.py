@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import html
 from typing import Any
 
 import frappe
@@ -68,4 +69,69 @@ def pos_invoice_sii_print_block(doc: Any) -> dict[str, Any]:
 	return out
 
 
-__all__ = ["pos_invoice_sii_print_block"]
+def _first_address_name_for_company(company: str) -> str | None:
+	"""Cualquier Address activa enlazada a Company (no exige bandera primaria)."""
+	row = frappe.db.sql(
+		"""
+		SELECT dl.parent
+		FROM `tabDynamic Link` dl
+		INNER JOIN `tabAddress` addr ON addr.name = dl.parent
+		WHERE dl.parenttype = 'Address'
+		  AND dl.link_doctype = 'Company'
+		  AND dl.link_name = %(company)s
+		  AND IFNULL(addr.disabled, 0) = 0
+		ORDER BY IFNULL(addr.is_primary_address, 0) DESC,
+		         IFNULL(addr.is_shipping_address, 0) DESC,
+		         addr.modified DESC
+		LIMIT 1
+		""",
+		{"company": company},
+	)
+	return row[0][0] if row else None
+
+
+def _address_plain_br(address_name: str) -> str:
+	"""Lineas de direccion sin plantilla Address (evita fallos de template en impresion)."""
+	try:
+		a = frappe.get_cached_doc("Address", address_name)
+	except Exception:
+		return ""
+	parts: list[str] = []
+	for fn in ("address_line1", "address_line2", "city", "state", "pincode", "country"):
+		v = (a.get(fn) or "").strip()
+		if v:
+			parts.append(html.escape(v))
+	return "<br>".join(parts) if parts else ""
+
+
+def company_address_display(company: str | None) -> str:
+	"""Direccion de la Company para boleta POS; vacio si no hay Address enlazada.
+
+	Orden: direccion primaria, despacho, cualquier Address enlazada a la Company.
+	Si ``render_address`` falla (plantilla), usa lineas planas del Address.
+	"""
+	if not company:
+		return ""
+	try:
+		from frappe.contacts.doctype.address.address import get_default_address, render_address
+	except Exception:
+		return ""
+
+	addr_name = get_default_address("Company", company, "is_primary_address")
+	if not addr_name:
+		addr_name = get_default_address("Company", company, "is_shipping_address")
+	if not addr_name:
+		addr_name = _first_address_name_for_company(company)
+	if not addr_name:
+		return ""
+
+	try:
+		rendered = render_address(addr_name, check_permissions=False)
+		if rendered and str(rendered).strip():
+			return str(rendered).strip()
+	except Exception:
+		pass
+	return _address_plain_br(addr_name)
+
+
+__all__ = ["company_address_display", "pos_invoice_sii_print_block"]
