@@ -243,16 +243,7 @@
   }
  ],
  "index_web_pages_for_search": 1,
- "links": [
-  {
-   "link_doctype": "Sales Invoice",
-   "link_fieldname": "sales_invoice"
-  },
-  {
-   "link_doctype": "POS Invoice",
-   "link_fieldname": "pos_invoice"
-  }
- ],
+ "links": [],
  "modified": "2026-04-24 00:00:00",
  "modified_by": "Administrator",
  "module": "PagosBF",

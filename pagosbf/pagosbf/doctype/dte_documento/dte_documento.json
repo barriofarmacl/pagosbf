@@ -210,12 +210,7 @@
   }
  ],
  "index_web_pages_for_search": 1,
- "links": [
-  {
-   "link_doctype": "Sales Invoice",
-   "link_fieldname": "sales_invoice"
-  }
- ],
+ "links": [],
  "modified": "2026-05-11 00:00:00",
  "modified_by": "Administrator",
  "module": "PagosBF",
