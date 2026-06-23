@@ -26,6 +26,43 @@ class TestPosInvoiceBoletaSiiPrintFormat(FrappeTestCase):
 		self.assertEqual(tax_row_print_label({"description": "VAT", "rate": 19}), "IVA 19%")
 		self.assertEqual(tax_row_print_label({"description": "Impuesto adicional"}), "Impuesto adicional")
 
+	def test_pos_boleta_tax_lines_inclusive_fallback(self) -> None:
+		from pagosbf.pagosbf.utils.jinja_methods import pos_boleta_tax_lines
+
+		doc = frappe._dict(
+			currency="CLP",
+			taxes=[
+				frappe._dict(
+					description="VAT @ 19.0",
+					rate=19,
+					included_in_print_rate=1,
+					tax_amount=0,
+					tax_amount_after_discount_amount=0,
+				)
+			],
+			total_taxes_and_charges=206,
+		)
+		doc.get_formatted = lambda field, *a, **k: "$ 206" if field == "total_taxes_and_charges" else ""
+
+		lines = pos_boleta_tax_lines(doc)
+		self.assertEqual(len(lines), 1)
+		self.assertEqual(lines[0]["label"], "IVA 19%")
+		self.assertEqual(lines[0]["formatted"], "$ 206")
+
+	def test_pos_boleta_tax_lines_from_row_amount(self) -> None:
+		from pagosbf.pagosbf.utils.jinja_methods import pos_boleta_tax_lines
+
+		row = frappe._dict(
+			description="VAT @ 19.0",
+			rate=19,
+			tax_amount=206,
+			get_formatted=lambda field, doc: "$ 206",
+		)
+		doc = frappe._dict(currency="CLP", taxes=[row], total_taxes_and_charges=206)
+		lines = pos_boleta_tax_lines(doc)
+		self.assertEqual(len(lines), 1)
+		self.assertEqual(lines[0]["label"], "IVA 19%")
+
 	def test_pos_invoice_boleta_sii_json_contract(self) -> None:
 		base = Path(frappe.get_app_path("pagosbf"))
 		path = base / "pagosbf" / "print_format" / "pos_invoice_boleta_sii" / "pos_invoice_boleta_sii.json"
@@ -47,5 +84,5 @@ class TestPosInvoiceBoletaSiiPrintFormat(FrappeTestCase):
 		self.assertNotIn("ted_pdf417_payload", html)
 		# Boleta Chile: IVA inclusivo debe verse en ticket (no ocultar por included_in_print_rate).
 		self.assertNotIn("not row.included_in_print_rate", html)
-		self.assertIn("row.tax_amount", html)
-		self.assertIn("tax_row_print_label(row)", html)
+		self.assertIn("pos_boleta_tax_lines(doc)", html)
+		self.assertIn("tax_line.label", html)

@@ -10,6 +10,7 @@ import re
 from typing import Any
 
 import frappe
+from frappe.utils import flt, fmt_money
 
 
 def pos_invoice_sii_print_block(doc: Any) -> dict[str, Any]:
@@ -165,4 +166,67 @@ def tax_row_print_label(row: Any) -> str:
 	return desc
 
 
-__all__ = ["company_address_display", "pos_invoice_sii_print_block", "tax_row_print_label"]
+def _row_field(row: Any, fieldname: str) -> Any:
+	if isinstance(row, dict):
+		return row.get(fieldname)
+	return getattr(row, fieldname, None)
+
+
+def tax_row_print_amount(row: Any) -> float:
+	"""Monto impuesto en fila child; inclusivo Chile puede dejar tax_amount en 0."""
+	for fieldname in ("tax_amount", "tax_amount_after_discount_amount", "base_tax_amount"):
+		amount = flt(_row_field(row, fieldname))
+		if amount:
+			return amount
+	return 0.0
+
+
+def _tax_row_formatted_amount(row: Any, doc: Any, amount: float) -> str:
+	stored = flt(_row_field(row, "tax_amount"))
+	if stored and abs(stored - amount) < 0.01:
+		try:
+			return row.get_formatted("tax_amount", doc)
+		except Exception:
+			pass
+	currency = getattr(doc, "currency", None) or doc.get("currency")
+	return fmt_money(amount, currency=currency)
+
+
+def pos_boleta_tax_lines(doc: Any) -> list[dict[str, str]]:
+	"""Filas de impuesto para ticket boleta (IVA inclusivo Chile)."""
+	taxes = list(doc.get("taxes") or [])
+	lines: list[dict[str, str]] = []
+
+	for row in taxes:
+		amount = tax_row_print_amount(row)
+		if amount:
+			lines.append(
+				{
+					"label": tax_row_print_label(row),
+					"formatted": _tax_row_formatted_amount(row, doc, amount),
+				}
+			)
+
+	if lines:
+		return lines
+
+	total_tax = flt(doc.get("total_taxes_and_charges"))
+	if not total_tax:
+		return lines
+
+	label = tax_row_print_label(taxes[0]) if len(taxes) == 1 else "IVA"
+	return [
+		{
+			"label": label,
+			"formatted": doc.get_formatted("total_taxes_and_charges"),
+		}
+	]
+
+
+__all__ = [
+	"company_address_display",
+	"pos_boleta_tax_lines",
+	"pos_invoice_sii_print_block",
+	"tax_row_print_amount",
+	"tax_row_print_label",
+]
