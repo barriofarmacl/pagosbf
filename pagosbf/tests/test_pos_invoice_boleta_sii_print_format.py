@@ -86,3 +86,5 @@ class TestPosInvoiceBoletaSiiPrintFormat(FrappeTestCase):
 		self.assertNotIn("not row.included_in_print_rate", html)
 		self.assertIn("pos_boleta_tax_lines(doc)", html)
 		self.assertIn("tax_line.label", html)
+		self.assertNotIn("Cajero", html)
+		self.assertNotIn("doc.owner", html)
