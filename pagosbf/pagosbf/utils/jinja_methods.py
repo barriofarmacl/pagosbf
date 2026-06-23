@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import html
+import re
 from typing import Any
 
 import frappe
@@ -134,4 +135,34 @@ def company_address_display(company: str | None) -> str:
 	return _address_plain_br(addr_name)
 
 
-__all__ = ["company_address_display", "pos_invoice_sii_print_block"]
+_VAT_AT_RATE_RE = re.compile(r"^VAT\s*@\s*([\d.]+)\s*$", re.IGNORECASE)
+_VAT_PREFIX_RE = re.compile(r"^VAT\b", re.IGNORECASE)
+
+
+def tax_row_print_label(row: Any) -> str:
+	"""Etiqueta de impuesto para ticket Chile: ERPNext suele usar ``VAT @ 19.0``."""
+	if isinstance(row, dict):
+		desc = (row.get("description") or "").strip()
+		rate = row.get("rate")
+	else:
+		desc = (getattr(row, "description", None) or "").strip()
+		rate = getattr(row, "rate", None)
+
+	if not desc:
+		return f"IVA {rate}%" if rate else "IVA"
+
+	m = _VAT_AT_RATE_RE.match(desc)
+	if m:
+		r = m.group(1).rstrip("0").rstrip(".") if "." in m.group(1) else m.group(1)
+		return f"IVA {r}%"
+
+	if _VAT_PREFIX_RE.match(desc):
+		replaced = _VAT_PREFIX_RE.sub("IVA", desc, count=1).strip()
+		if replaced == "IVA" and rate:
+			return f"IVA {rate}%"
+		return replaced
+
+	return desc
+
+
+__all__ = ["company_address_display", "pos_invoice_sii_print_block", "tax_row_print_label"]

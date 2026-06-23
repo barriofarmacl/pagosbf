@@ -19,6 +19,13 @@ class TestPosInvoiceBoletaSiiPrintFormat(FrappeTestCase):
 		self.assertEqual(company_address_display(None), "")
 		self.assertEqual(company_address_display(""), "")
 
+	def test_tax_row_print_label_chile_iva(self) -> None:
+		from pagosbf.pagosbf.utils.jinja_methods import tax_row_print_label
+
+		self.assertEqual(tax_row_print_label({"description": "VAT @ 19.0"}), "IVA 19%")
+		self.assertEqual(tax_row_print_label({"description": "VAT", "rate": 19}), "IVA 19%")
+		self.assertEqual(tax_row_print_label({"description": "Impuesto adicional"}), "Impuesto adicional")
+
 	def test_pos_invoice_boleta_sii_json_contract(self) -> None:
 		base = Path(frappe.get_app_path("pagosbf"))
 		path = base / "pagosbf" / "print_format" / "pos_invoice_boleta_sii" / "pos_invoice_boleta_sii.json"
@@ -33,6 +40,12 @@ class TestPosInvoiceBoletaSiiPrintFormat(FrappeTestCase):
 		self.assertIn("company_address_display(doc.company)", html)
 		self.assertIn("sii_sin_dte", html)
 		self.assertIn("timbre_pdf417_data_url", html)
+		self.assertIn("width: 90%", html)
+		self.assertNotIn("42mm", html)
 		self.assertIn("Sin emision SII", html)
 		self.assertNotIn("ted_compact", html)
 		self.assertNotIn("ted_pdf417_payload", html)
+		# Boleta Chile: IVA inclusivo debe verse en ticket (no ocultar por included_in_print_rate).
+		self.assertNotIn("not row.included_in_print_rate", html)
+		self.assertIn("row.tax_amount", html)
+		self.assertIn("tax_row_print_label(row)", html)
