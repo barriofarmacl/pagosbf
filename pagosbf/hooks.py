@@ -243,3 +243,5 @@ doc_events = {
 # 	"Logging DocType Name": 30  # days to retain logs
 # }
 
+after_migrate = "pagosbf.pagosbf.install.after_migrate"
+
