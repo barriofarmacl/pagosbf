@@ -1,0 +1,27 @@
+meta {
+  name: login
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{frappe_base}}/api/method/login
+  body: json
+}
+
+headers {
+  Content-Type: application/json
+  Accept: application/json
+  Host: {{frappe_site}}
+}
+
+body:json {
+  {
+    "usr": "{{frappe_user}}",
+    "pwd": "{{frappe_password}}"
+  }
+}
+
+docs {
+  Sesion cookie para las siguientes llamadas. Alternativa: Authorization token api_key:api_secret en consultar estado.
+}

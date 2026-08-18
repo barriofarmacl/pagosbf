@@ -1,0 +1,6 @@
+{
+  "version": "1",
+  "name": "pagosbf SII boleta REST",
+  "type": "collection",
+  "ignore": ["node_modules", ".git"]
+}

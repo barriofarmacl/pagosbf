@@ -1,0 +1,26 @@
+meta {
+  name: POST token
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{sii_api}}/boleta.electronica.token
+  body: xml
+}
+
+headers {
+  Accept: application/xml
+  Content-Type: application/xml
+  User-Agent: {{user_agent}}
+}
+
+body:xml {
+  <!-- Reemplazar por el XML getToken firmado (sign_sii_get_token_envelope). Bruno no carga el PFX. -->
+}
+
+docs {
+  Body: XML getToken firmado RSA-SHA1 (mismo que SOAP pszXml).
+  Respuesta: TOKEN. Pegarlo en el secreto token del entorno y usarlo en las GET siguientes.
+  Preferible: dejar que pagosbf consulte estado; esa ruta firma sola.
+}

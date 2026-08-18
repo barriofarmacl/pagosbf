@@ -1,0 +1,21 @@
+meta {
+  name: GET estado envio
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{sii_api}}/boleta.electronica.envio/{{rut_emisor_num}}-{{dv_emisor}}-{{trackid}}
+}
+
+headers {
+  Accept: application/json
+  User-Agent: {{user_agent}}
+  Cookie: TOKEN={{token}}
+}
+
+docs {
+  Caso 00012: trackid 23365937017, RUT 76957985-0.
+  Esperado JSON: estado REC | EPR | RCH y estadistica por tipo 39.
+  HTTP 401 = TOKEN vacio o vencido. HTTP 404 = trackid no existe en este ambiente.
+}

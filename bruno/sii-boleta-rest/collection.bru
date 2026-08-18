@@ -1,0 +1,20 @@
+meta {
+  name: pagosbf SII boleta REST
+}
+
+docs {
+  Consultas boleta electronica SII (OpenAPI 1.0.5). No incluye POST de envio: eso consume CAF.
+
+  Camino corto para EPR de ACC-PSINV-2026-00012:
+  1. Entorno frappe-dev.
+  2. pagosbf / login (o API token en el entorno).
+  3. pagosbf / consultar estado DTE (BOL-39-20009).
+
+  Camino SII directo:
+  1. Entorno produccion.
+  2. GET semilla (salud del API; no autentica el resto).
+  3. Pegar TOKEN en el entorno (lo emite pagosbf al emitir o consultar; Bruno no firma el PFX).
+  4. GET estado envio (trackid 23365937017).
+
+  REC = recepcion. EPR = aceptado. RCH = rechazado.
+}

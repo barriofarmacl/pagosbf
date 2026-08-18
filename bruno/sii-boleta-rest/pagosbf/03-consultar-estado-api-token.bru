@@ -1,0 +1,27 @@
+meta {
+  name: consultar estado DTE (API token)
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{frappe_base}}/api/method/pagosbf.pagosbf.api.boleta.consultar_estado
+  body: json
+}
+
+headers {
+  Content-Type: application/json
+  Accept: application/json
+  Host: {{frappe_site}}
+  Authorization: token {{frappe_api_key}}:{{frappe_api_secret}}
+}
+
+body:json {
+  {
+    "dte_boleta": "{{dte_boleta}}"
+  }
+}
+
+docs {
+  Misma consulta sin login interactivo. Secretos frappe_api_key y frappe_api_secret en el entorno.
+}

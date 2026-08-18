@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
 
 from lxml import etree
 
@@ -43,3 +44,26 @@ def parse_respuesta_sii(respuesta_xml: str) -> SiiRespuesta:
 		semilla=sm,
 		token=tok,
 	)
+
+
+def parse_sii_estado_payload(raw: str) -> SiiRespuesta:
+	"""XML SOAP/DTEWS o JSON REST boleta (`estado`, `trackid`)."""
+	text = (raw or "").strip()
+	if text.startswith("{") or text.startswith("["):
+		try:
+			data = json.loads(text)
+		except json.JSONDecodeError as exc:
+			raise ValueError(f"JSON de respuesta SII invalido: {exc}") from exc
+		if not isinstance(data, dict):
+			raise ValueError("JSON de estado SII no es un objeto")
+		est = str(data.get("estado") or "-1")
+		glosa = data.get("glosa") or data.get("descripcion")
+		if not glosa:
+			glosa = est
+		return SiiRespuesta(
+			estado=est,
+			glosa=str(glosa),
+			semilla=None,
+			token=None,
+		)
+	return parse_respuesta_sii(raw)
