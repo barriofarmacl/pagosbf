@@ -171,7 +171,7 @@ doc_events = {
 # Testing
 # -------
 
-# before_tests = "pagosbf.install.before_tests"
+before_tests = "pagosbf.pagosbf.install.before_tests"
 
 # Overriding Methods
 # ------------------------------
