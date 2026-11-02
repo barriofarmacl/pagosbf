@@ -41,6 +41,19 @@ def run() -> str:
 		for lab, rows in (("39", caf_39), ("41", caf_41)):
 			if rows:
 				out[f"caf_tipo_{lab}_name"] = rows[0].name
+		profiles = frappe.get_all(
+			"POS Profile",
+			filters={"disabled": 0},
+			fields=["name", "taxes_and_charges"],
+		)
+		out["pos_profiles"] = profiles
+		sin_iva = [p.name for p in profiles if not (p.taxes_and_charges or "").strip()]
+		if sin_iva:
+			out["aviso"].append(
+				"POS Profile sin taxes_and_charges (caja caera a DTE 41): " + ", ".join(sin_iva)
+			)
+		elif not profiles:
+			out["aviso"].append("Sin POS Profile habilitado")
 	except Exception as e:  # noqa: BLE001
 		out["ok"] = False
 		out["errores"].append(f"SII Configuration: {e!s}")

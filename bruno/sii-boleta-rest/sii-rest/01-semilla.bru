@@ -1,0 +1,19 @@
+meta {
+  name: GET semilla
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{sii_api}}/boleta.electronica.semilla
+}
+
+headers {
+  Accept: application/xml
+  User-Agent: {{user_agent}}
+}
+
+docs {
+  Salud del API. Esperado: HTTP 200, XML ESTADO 00 y SEMILLA.
+  No deja sesion; el token se obtiene firmando esa semilla con el PFX (pagosbf, no Bruno).
+}

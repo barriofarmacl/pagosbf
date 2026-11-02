@@ -15,6 +15,7 @@ from frappe.utils.data import getdate
 from pagosbf.pagosbf.boleta.caf_file import load_caf_data
 from pagosbf.pagosbf.boleta.cert_utils import get_signing_material_or_throw, resolve_digitador_rut
 from pagosbf.pagosbf.boleta.invoice_to_boleta import pos_invoice_to_dte_data, sales_invoice_to_dte_data
+from pagosbf.pagosbf.boleta.pos_profile_taxes import false_exenta_if_profile_has_iva_reason
 from pagosbf.pagosbf.dte.caf_parser import CAFData
 from pagosbf.pagosbf.dte import constants
 from pagosbf.pagosbf.dte.envio_builder import RUT_SII_CARATULA, CaratulaEmision, build_envio_boleta_draft
@@ -29,7 +30,7 @@ from pagosbf.pagosbf.dte.types import BoletaReferencia, DTEBoletaData, Emisor
 from pagosbf.pagosbf.sii.rut import rut_para_dte_xml
 from pagosbf.pagosbf.sii.sii_client import SIIClientError
 from pagosbf.pagosbf.sii.sii_frappe import append_dte_respuesta_sii, sii_client_from_sii_configuration
-from pagosbf.pagosbf.sii.sii_response_xml import parse_respuesta_sii
+from pagosbf.pagosbf.sii.sii_response_xml import parse_sii_estado_payload
 
 try:
 	_CL_TZ = ZoneInfo("America/Santiago")
@@ -195,6 +196,14 @@ def _ejecutar_emision_core(
 	if not cert:
 		frappe.throw("Configure `certificado_digital` en SII Configuration.")
 	em = emisor_from_sii_configuration()
+	if source_doctype == "POS Invoice":
+		profile = (getattr(doc, "pos_profile", None) or "").strip()
+		tmpl = (
+			frappe.db.get_value("POS Profile", profile, "taxes_and_charges") if profile else None
+		)
+		reason = false_exenta_if_profile_has_iva_reason(doc, tmpl)
+		if reason:
+			frappe.throw(reason)
 	tipo = _tipo_preliminar(doc)
 	caf = caf_name or resolve_caf_por_tipo_dte(tipo)
 	caf_d: CAFData = load_caf_data(caf)
@@ -483,7 +492,7 @@ def consultar_estado_dte(dte_boleta_name: str) -> dict:
 		estado="00",
 	)
 	raw = client.consultar_estado(b.track_id, token=tok, rut_emisor=em.rut)
-	resp = parse_respuesta_sii(raw)
+	resp = parse_sii_estado_payload(raw)
 	append_dte_respuesta_sii(
 		dte_boleta_name,
 		accion="estado",

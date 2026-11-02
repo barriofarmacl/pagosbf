@@ -1,0 +1,28 @@
+meta {
+  name: consultar estado DTE
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{frappe_base}}/api/method/pagosbf.pagosbf.api.boleta.consultar_estado
+  body: json
+}
+
+headers {
+  Content-Type: application/json
+  Accept: application/json
+  Host: {{frappe_site}}
+}
+
+body:json {
+  {
+    "dte_boleta": "{{dte_boleta}}"
+  }
+}
+
+docs {
+  Pide token REST boleta, consulta el envio y actualiza DTE Boleta (respuestas + estado_envio).
+  Requiere cookie de login. Default: BOL-39-20009 / POS ACC-PSINV-2026-00012.
+  Esperado: estado EPR (aceptado), REC (aun procesando) o RCH (rechazo).
+}
