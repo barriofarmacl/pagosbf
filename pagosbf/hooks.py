@@ -142,6 +142,7 @@ doc_events = {
 		"on_submit": "pagosbf.pagosbf.api.boleta.on_sales_invoice_submit",
 	},
 	"POS Invoice": {
+		"before_validate": "pagosbf.pagosbf.boleta.pos_profile_taxes.ensure_pos_profile_taxes_event",
 		"on_submit": "pagosbf.pagosbf.api.boleta.on_pos_invoice_submit",
 	},
 }
@@ -242,4 +243,6 @@ doc_events = {
 # default_log_clearing_doctypes = {
 # 	"Logging DocType Name": 30  # days to retain logs
 # }
+
+after_migrate = "pagosbf.pagosbf.install.after_migrate"
 

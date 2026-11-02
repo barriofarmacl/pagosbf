@@ -1,21 +1,25 @@
-"""POST multipart al cgi DTEUpload del SII.
+"""POST multipart al envio DTE/boleta del SII.
 
 Campos alineados a integraciones publicas: multipart con rut sender/company y
-``archivo``; el **token** va en cabecera ``Cookie: TOKEN=...`` como Maullin/Palena
-esperan (p. ej. referencia ``python-sii`` / CGI DTEUpload). Enviar el token solo
-como campo de formulario puede producir ``ptr NULL (ptrTkn)``.
-Documentacion: 'Descripcion servicios web DTE' y paginas de ayuda maullin.
+``archivo``; el **token** va en cabecera ``Cookie: TOKEN=...``. Enviar el token
+solo como campo de formulario puede producir ``ptr NULL (ptrTkn)`` en CGI.
+
+CGI factura: ``cgi_dte/UPL/DTEUpload`` (maullin/palena). REST boleta:
+``/recursos/v1/boleta.electronica.envio`` (pangal/rahue). El REST responde JSON
+con ``trackid``; el CGI responde HTML/XML RECEPCIONDTE.
 """
 
 from __future__ import annotations
 
 import html
+import json
 import re
 from dataclasses import dataclass
 from typing import Any
 
 import requests
 
+from .boleta_rest import REST_BOLETA_USER_AGENT, is_boleta_rest_url
 from .rut import split_rut
 
 
@@ -35,6 +39,23 @@ _TRACK_PATTERNS = (
 def _text_for_track_parse(raw: str) -> str:
 	"""Maullin a veces devuelve RECEPCIONDTE con entidades HTML (&lt;TRACKID&gt;...)."""
 	return html.unescape(raw or "")
+
+
+def _trackid_from_json(raw: str) -> str | None:
+	text = (raw or "").strip()
+	if not text.startswith("{"):
+		return None
+	try:
+		payload = json.loads(text)
+	except json.JSONDecodeError:
+		return None
+	if not isinstance(payload, dict):
+		return None
+	tid = payload.get("trackid", payload.get("trackId", payload.get("TRACKID")))
+	if tid is None:
+		return None
+	s = str(tid).strip()
+	return s if s.isdigit() else None
 
 
 @dataclass(frozen=True, slots=True)
@@ -81,14 +102,21 @@ def upload_envio_dte(
 		"rutCompany": b_c,
 		"dvCompany": dv_c,
 	}
-	headers = {
-		"Accept": "image/gif, image/x-xbitmap, image/jpeg, image/pjpeg,application/vnd.ms-powerpoint, application/ms-excel,application/msword, */*",
-		"Accept-Language": "es-cl",
-		"Cache-Control": "no-cache",
-		"Cookie": f"TOKEN={token}",
-		"Referer": "https://barriofarma.cl/",
-		"User-Agent": "Mozilla/4.0 (compatible; PROG 1.0; Windows NT 5.0; YComp 5.0.2.4)",
-	}
+	if is_boleta_rest_url(url):
+		headers = {
+			"Accept": "application/json",
+			"User-Agent": REST_BOLETA_USER_AGENT,
+			"Cookie": f"TOKEN={token}",
+		}
+	else:
+		headers = {
+			"Accept": "image/gif, image/x-xbitmap, image/jpeg, image/pjpeg,application/vnd.ms-powerpoint, application/ms-excel,application/msword, */*",
+			"Accept-Language": "es-cl",
+			"Cache-Control": "no-cache",
+			"Cookie": f"TOKEN={token}",
+			"Referer": "https://barriofarma.cl/",
+			"User-Agent": "Mozilla/4.0 (compatible; PROG 1.0; Windows NT 5.0; YComp 5.0.2.4)",
+		}
 	r = requests.post(
 		url,
 		data=data,
@@ -100,15 +128,15 @@ def upload_envio_dte(
 	text = r.text
 	if r.status_code >= 400:
 		raise SIIUploadError(f"HTTP {r.status_code}: {text[:800]}")
+	tid = _trackid_from_json(text)
 	parse_text = _text_for_track_parse(text)
-	tid: str | None = None
-	for rx in _TRACK_PATTERNS:
-		m = rx.search(parse_text)
-		if m:
-			tid = m.group(1)
-			break
 	if tid is None:
-		# Linea puramente numerica larga
+		for rx in _TRACK_PATTERNS:
+			m = rx.search(parse_text)
+			if m:
+				tid = m.group(1)
+				break
+	if tid is None:
 		for line in parse_text.splitlines():
 			if line.strip().isdigit() and len(line.strip()) >= 6:
 				tid = line.strip()

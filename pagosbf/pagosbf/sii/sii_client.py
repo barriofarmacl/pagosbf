@@ -1,14 +1,16 @@
-"""Cliente SII: semilla, token, envio DTE, consulta estado (SOAP + HTTP)."""
+"""Cliente SII: semilla, token, envio DTE, consulta estado (SOAP y REST boleta)."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
+import requests
 from zeep import Client
 from zeep.transports import Transport
 
 from pagosbf.pagosbf.dte.xml_signer import SigningMaterial, sign_sii_get_token_envelope
 
+from .boleta_rest import consulta_envio_url, is_boleta_rest_url, rest_boleta_headers
 from .dte_upload import DteUploadResult, SIIUploadError, upload_envio_dte
 from .retry import call_with_retry
 from .rut import split_rut
@@ -79,6 +81,13 @@ class SIIClient:
 		self._get_token: Client | None = None
 		self._q_est: Client | None = None
 
+	@property
+	def uses_boleta_rest(self) -> bool:
+		"""True si semilla o envio apuntan al API REST de boleta (no DTEWS/cgi)."""
+		return is_boleta_rest_url(self._cfg.url_envio) or is_boleta_rest_url(
+			self._cfg.url_semilla
+		)
+
 	def _c_seed(self) -> Client:
 		if self._cr_seed is None:
 			self._cr_seed = Client(
@@ -101,10 +110,34 @@ class SIIClient:
 		return self._q_est
 
 	def get_raw_seed(self) -> str:
-		"""SOAP `getSeed`, retorno crudo (XML)."""
+		"""Semilla cruda (XML RESPUESTA): SOAP getSeed o GET REST boleta."""
+		if self.uses_boleta_rest:
+			return self._rest_get_seed()
 
 		def _call() -> str:
 			return str(self._c_seed().service.getSeed())
+
+		return str(call_with_retry(_call, max_attempts=self._cfg.retries))
+
+	def _rest_get_seed(self) -> str:
+		def _call() -> str:
+			r = requests.get(
+				self._cfg.url_semilla,
+				timeout=self._cfg.timeout_s,
+				verify=True,
+				headers=rest_boleta_headers(accept="application/xml"),
+			)
+			if r.status_code >= 500:
+				r.raise_for_status()
+			if r.status_code != 200:
+				raise SIIClientError(
+					f"getSeed REST HTTP {r.status_code}: {r.text[:400]}",
+					phase="getSeed",
+					raw_xml=r.text[:2000],
+					endpoint=self._cfg.url_semilla,
+					sii_estado=str(r.status_code),
+				)
+			return r.text
 
 		return str(call_with_retry(_call, max_attempts=self._cfg.retries))
 
@@ -128,14 +161,46 @@ class SIIClient:
 			)
 		return p.semilla
 
+	def _fetch_token_raw(self, psz_xml: str) -> str:
+		if self.uses_boleta_rest:
+			return self._rest_post_token_xml(psz_xml)
+
+		def _call() -> str:
+			return str(self._c_tok().service.getToken(pszXml=psz_xml))
+
+		return str(call_with_retry(_call, max_attempts=self._cfg.retries))
+
+	def _rest_post_token_xml(self, psz_xml: str) -> str:
+		body = psz_xml.encode("utf-8") if isinstance(psz_xml, str) else psz_xml
+
+		def _call() -> str:
+			headers = rest_boleta_headers(accept="application/xml")
+			headers["Content-Type"] = "application/xml"
+			r = requests.post(
+				self._cfg.url_token,
+				data=body,
+				timeout=self._cfg.timeout_s,
+				verify=True,
+				headers=headers,
+			)
+			if r.status_code >= 500:
+				r.raise_for_status()
+			if r.status_code != 200:
+				raise SIIClientError(
+					f"getToken REST HTTP {r.status_code}: {r.text[:400]}",
+					phase="getToken",
+					raw_xml=r.text[:2000],
+					endpoint=self._cfg.url_token,
+					sii_estado=str(r.status_code),
+				)
+			return r.text
+
+		return str(call_with_retry(_call, max_attempts=self._cfg.retries))
+
 	def get_token_with_certificate(self, semilla: str, material: SigningMaterial) -> str:
 		"""Firma `semilla` con PFX, llama `getToken` y retorna el token (string SII)."""
 		psz = sign_sii_get_token_envelope(semilla, material)
-
-		def _call() -> str:
-			return str(self._c_tok().service.getToken(pszXml=psz))
-
-		raw = str(call_with_retry(_call, max_attempts=self._cfg.retries))
+		raw = self._fetch_token_raw(psz)
 		p = parse_respuesta_sii(raw)
 		if p.estado != "00" or not p.token:
 			raise SIIClientError(
@@ -166,11 +231,7 @@ class SIIClient:
 			)
 		sem = p0.semilla
 		psz = sign_sii_get_token_envelope(sem, material)
-
-		def _call() -> str:
-			return str(self._c_tok().service.getToken(pszXml=psz))
-
-		raw1 = str(call_with_retry(_call, max_attempts=self._cfg.retries))
+		raw1 = self._fetch_token_raw(psz)
 		p1 = parse_respuesta_sii(raw1)
 		if p1.estado != "00" or not p1.token:
 			raise SIIClientError(
@@ -204,7 +265,9 @@ class SIIClient:
 		)
 
 	def consultar_estado(self, track_id: str, token: str, rut_emisor: str) -> str:
-		"""SOAP `getEstUp`; retorno XML (string) tal cual SII."""
+		"""SOAP `getEstUp` o GET REST boleta; retorno crudo (XML o JSON)."""
+		if self.uses_boleta_rest:
+			return self._rest_consultar_estado(track_id, token, rut_emisor)
 		rut, dv = split_rut(rut_emisor)
 		# RUT 8 cifras en SOAP (SII acepta cuerpo sin padding en algunas rutas;
 		# QueryEstUp manual: RUT contribuyente)
@@ -219,11 +282,37 @@ class SIIClient:
 
 		return str(call_with_retry(_call, max_attempts=self._cfg.retries))
 
+	def _rest_consultar_estado(self, track_id: str, token: str, rut_emisor: str) -> str:
+		url = consulta_envio_url(self._cfg.url_consulta, rut_emisor, track_id)
+
+		def _call() -> str:
+			r = requests.get(
+				url,
+				timeout=self._cfg.timeout_s,
+				verify=True,
+				headers=rest_boleta_headers(token=token, accept="application/json"),
+			)
+			if r.status_code >= 500:
+				r.raise_for_status()
+			if r.status_code != 200:
+				raise SIIClientError(
+					f"consulta envio REST HTTP {r.status_code}: {r.text[:400]}",
+					phase="getEstUp",
+					raw_xml=r.text[:2000],
+					endpoint=url,
+					sii_estado=str(r.status_code),
+				)
+			return r.text
+
+		return str(call_with_retry(_call, max_attempts=self._cfg.retries))
+
 	def consultar_estado_parseado(
 		self, track_id: str, token: str, rut_emisor: str
 	) -> SiiRespuesta:
+		from .sii_response_xml import parse_sii_estado_payload
+
 		raw = self.consultar_estado(track_id, token, rut_emisor)
-		return parse_respuesta_sii(raw)
+		return parse_sii_estado_payload(raw)
 
 
 __all__ = [
